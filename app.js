@@ -1,5 +1,6 @@
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeShare, decodeShare, toLocalInput } from './countdown.js';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
+import { mountFlight, flightStage } from './flight.js';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -28,6 +29,8 @@ let creatingCloud = false;
 let pendingRoom = null;
 let editingVersion = null;
 let invalidRoomLink = false;
+const mainFlight = mountFlight($('flight-visual'), 'main');
+let pipFlight = null;
 
 function rememberRoom() {
   try { localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(room)); } catch { /* The room link still works. */ }
@@ -164,6 +167,7 @@ function initialize() {
 
 function renderMetadata() {
   if (invalidRoomLink || room && !cloudCache) {
+    mainFlight.pending();
     document.title = '共享倒计时 · 有期';
     $('event-title').textContent = invalidRoomLink ? '共享链接无效' : cloudStatus === 'loading' ? '正在读取共享倒计时' : '暂未读取到共享倒计时';
     for (const id of ['start-date', 'start-time', 'end-date', 'end-time']) $(id).textContent = '—';
@@ -194,16 +198,19 @@ function renderTime() {
   const value = getCountdown(state);
   for (const part of ['days', 'hours', 'minutes', 'seconds']) $(part).textContent = pad(value[part]);
   $('days').classList.toggle('long-number', value.days >= 1000);
-  const status = { upcoming: '未开始', active: '进行中', ended: '已抵达' }[value.phase];
+  mainFlight.update(value, state);
+  const status = flightStage(value.phase, value.progress).status;
   $('status-label').textContent = status;
-  $('event-kicker').textContent = { upcoming: '距离故事开始，还有', active: '距离这一天，还有', ended: '期待的这一天，到了' }[value.phase];
+  $('event-kicker').textContent = { upcoming: '下一段期待，等待启程', active: '沿着时间，飞向期待', ended: '跨越等待，终于抵达' }[value.phase];
+  $('timer-caption').textContent = { upcoming: '距离启程', active: '距离抵达', ended: '这一天，已经到来' }[value.phase];
   const target = value.phase === 'upcoming' ? state.start : state.end;
   $('target-caption').textContent = `${value.phase === 'upcoming' ? '开始于' : '相约于'} ${dateFormat.format(new Date(target))} · ${weekdayFormat.format(new Date(target))} ${timeFormat.format(new Date(target))}`;
   const percent = `${value.progress.toFixed(1)}%`;
-  $('progress-value').textContent = percent;
+  $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(1)}%`;
   $('progress-bar').style.width = percent;
   $('progress-track').setAttribute('aria-valuenow', value.progress.toFixed(1));
-  $('progress-caption').textContent = { upcoming: '美好的故事，即将开始', active: '每一秒，都更近一点', ended: '这段时光，已经完整走过' }[value.phase];
+  $('progress-track').setAttribute('aria-valuetext', `${status}，航程完成 ${percent}`);
+  $('progress-caption').textContent = { upcoming: '航班等待起飞', active: '沿着航线，慢慢靠近', ended: '航迹已完整点亮' }[value.phase];
   $('today').textContent = `${dateFormat.format(new Date())} / ${weekdayFormat.format(new Date())}`;
   if (pipWindow && !pipWindow.closed) renderPip(value);
 }
@@ -371,8 +378,7 @@ function renderPip(value) {
   const doc = pipWindow.document;
   doc.getElementById('pip-title').textContent = state.title;
   doc.getElementById('pip-time').textContent = `${pad(value.days)} 天 ${pad(value.hours)}:${pad(value.minutes)}:${pad(value.seconds)}`;
-  doc.getElementById('pip-label').textContent = { upcoming: '距离开始', active: '每一秒，都更近一点', ended: '期待的这一天，到了' }[value.phase];
-  doc.getElementById('pip-progress').style.width = `${value.progress}%`;
+  pipFlight?.update(value, state);
 }
 
 $('float-button').addEventListener('click', async () => {
@@ -380,22 +386,23 @@ $('float-button').addEventListener('click', async () => {
   if (pipWindow && !pipWindow.closed) { pipWindow.focus(); return; }
   $('float-button').disabled = true;
   try {
-    pipWindow = await window.documentPictureInPicture.requestWindow({ width: 360, height: 205 });
+    pipWindow = await window.documentPictureInPicture.requestWindow({ width: 380, height: 310 });
     const doc = pipWindow.document;
     doc.title = '有期 · 悬浮倒计时';
     doc.documentElement.lang = 'zh-CN';
     doc.documentElement.dataset.theme = document.documentElement.dataset.theme;
-    const style = doc.createElement('style');
-    style.textContent = `:root{color-scheme:light;--bg:#f5f6f2;--ink:#344c38;--muted:#7c897a;--line:#e3e9df;--accent:#657f66}:root[data-theme=dark]{color-scheme:dark;--bg:#202922;--ink:#d9e5ce;--muted:#a5b2a2;--line:#354035;--accent:#a6b99a}*{box-sizing:border-box}body{margin:0;padding:20px;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;display:flex;flex-direction:column;justify-content:center;min-height:100vh}h1{font-size:14px;font-weight:500;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pip-time{font-size:clamp(19px,8.5vw,38px);font-variant-numeric:tabular-nums;letter-spacing:-1px;white-space:nowrap;margin:15px 0}#pip-label{font-size:10px;color:var(--muted)}.track{height:3px;background:var(--line);border-radius:3px;margin-top:14px;overflow:hidden}#pip-progress{height:100%;background:var(--accent)}`;
-    doc.head.append(style);
+    for (const file of ['styles.css', 'flight.css']) {
+      const link = doc.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(file, document.baseURI).href;
+      doc.head.append(link);
+    }
+    doc.body.className = 'pip-body';
     const title = doc.createElement('h1'); title.id = 'pip-title';
     const time = doc.createElement('div'); time.id = 'pip-time'; time.setAttribute('role', 'timer');
-    const label = doc.createElement('div'); label.id = 'pip-label';
-    const track = doc.createElement('div'); track.className = 'track';
-    const progress = doc.createElement('div'); progress.id = 'pip-progress'; track.append(progress);
-    doc.body.append(title, time, label, track);
+    const flight = doc.createElement('div'); flight.className = 'flight-visual';
+    doc.body.append(title, flight, time);
+    pipFlight = mountFlight(flight, 'mini');
     renderPip(getCountdown(state));
-    pipWindow.addEventListener('pagehide', () => { pipWindow = null; }, { once: true });
+    pipWindow.addEventListener('pagehide', () => { pipWindow = null; pipFlight = null; }, { once: true });
     toast('小窗已开启，请保留此网页。');
   } catch { toast('未能打开悬浮小窗，请重试或使用专注模式。'); }
   finally { $('float-button').disabled = false; }

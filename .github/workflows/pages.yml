@@ -26,11 +26,12 @@ jobs:
           node --check app.js
           node --check countdown.js
           node --check cloud.js
+          node --check flight.js
           node --test
       - name: Prepare public files
         run: |
           mkdir _site
-          cp index.html styles.css app.js countdown.js cloud.js config.js favicon.svg _site/
+          cp index.html styles.css flight.css flight.js app.js countdown.js cloud.js config.js favicon.svg _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
