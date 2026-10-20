@@ -1,4 +1,5 @@
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeShare, decodeShare, toLocalInput } from './countdown.js';
+import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -14,6 +15,74 @@ let tickTimeout;
 let editingBaseline;
 let externalEdit = false;
 let saved = true;
+const cloud = new CloudClient();
+let room = null;
+let cloudRecord = null;
+let cloudStatus = 'loading';
+let cloudCache = false;
+let cloudTimer;
+let cloudRequest = null;
+let cloudFailures = 0;
+let writingCloud = false;
+let creatingCloud = false;
+let pendingRoom = null;
+let editingVersion = null;
+let invalidRoomLink = false;
+
+function rememberRoom() {
+  try { localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(room)); } catch { /* The room link still works. */ }
+  history.replaceState(null, '', roomUrl(location.href, room));
+}
+
+function cacheCloud() {
+  try { localStorage.setItem(`youqi.cache.${room.id}.${room.token}`, JSON.stringify(validateCountdown(state))); } catch { /* Online data remains authoritative. */ }
+}
+
+function setEditAccess() {
+  const disabled = invalidRoomLink || !!room && (!cloudRecord || !cloudRecord.canEdit);
+  for (const id of ['edit-button', 'bottom-edit', 'start-edit', 'end-edit']) {
+    $(id).disabled = disabled;
+    $(id).title = disabled ? cloudRecord ? '当前链接仅可查看' : '等待从云端读取编辑权限' : '';
+  }
+  $('float-button').disabled = invalidRoomLink || !!room && !cloudRecord && !cloudCache;
+}
+
+function applyCloudRecord(next) {
+  if (cloudRecord && next.version < cloudRecord.version) return;
+  const changed = JSON.stringify(validateCountdown(next)) !== JSON.stringify(state);
+  if ($('edit-dialog').open && cloudRecord && next.version !== cloudRecord.version) externalEdit = true;
+  state = validateCountdown(next);
+  cloudRecord = next;
+  cloudCache = true;
+  cacheCloud();
+  setEditAccess();
+  renderMetadata();
+  if ($('share-dialog').open) updateSharePanel();
+  return changed;
+}
+
+async function refreshCloud() {
+  if (!room || cloudRequest || writingCloud || creatingCloud) return;
+  clearTimeout(cloudTimer);
+  cloudRequest = new AbortController();
+  try {
+    const next = await cloud.read(room, cloudRequest.signal);
+    const hadRecord = !!cloudRecord;
+    const changed = applyCloudRecord(next);
+    cloudStatus = 'synced'; cloudFailures = 0;
+    if (hadRecord && changed) toast('已同步对方的最新修改。');
+  } catch (error) {
+    cloudStatus = error.code === 'SETUP' ? 'setup' : error.code === 'ACCESS' ? 'denied' : 'offline';
+    if (cloudStatus === 'denied') { cloudRecord = null; setEditAccess(); }
+    cloudFailures++;
+  } finally {
+    cloudRequest = null;
+    setSaveLabel();
+    if (!cloudCache) renderMetadata();
+    const delay = cloudStatus === 'denied' ? null : cloudStatus === 'setup' ? 30000 : cloudStatus === 'synced' ? document.hidden && !pipWindow ? 15000 : 2000 : Math.min(30000, 2000 * 2 ** Math.min(cloudFailures, 4));
+    if (delay !== null) cloudTimer = setTimeout(refreshCloud, delay);
+  }
+}
 
 function toast(message) {
   clearTimeout(toastTimeout);
@@ -30,10 +99,19 @@ function readLocal() {
 }
 
 function setSaveLabel() {
-  $('save-label').textContent = !saved ? '暂未保存，关闭后可能丢失' : sharedView ? '分享快照 · 修改仅保存在本机' : '已保存在此设备';
+  $('save-label').textContent = invalidRoomLink ? '共享链接不完整或格式无效' : room ? {
+    loading: '正在连接共享倒计时…',
+    synced: cloudRecord?.canEdit ? '云端已同步 · 可共同编辑' : '云端已同步 · 仅查看',
+    saving: '正在保存到云端…',
+    offline: cloudCache ? '暂时离线 · 当前显示上次同步内容' : '无法连接云端 · 请检查网络',
+    setup: '云端尚未初始化 · 需运行初始化 SQL',
+    denied: '共享链接已失效或无权访问'
+  }[cloudStatus] : !saved ? '暂未保存，关闭后可能丢失' : sharedView ? '分享快照 · 修改仅保存在本机' : '已保存在此设备';
+  $('retry-sync').hidden = !room || ['synced', 'loading', 'saving'].includes(cloudStatus);
 }
 
 function persist() {
+  if (room) { cacheCloud(); return; }
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); saved = true; }
   catch { saved = false; toast('浏览器暂时无法保存，请复制分享链接保留设置。'); }
   setSaveLabel();
@@ -47,20 +125,51 @@ function replaceShareHash() {
 
 function initialize() {
   const params = new URLSearchParams(location.hash.slice(1));
+  try {
+    room = roomFromHash(location.hash);
+    if (!room && !params.has('c')) {
+      const last = localStorage.getItem(ROOM_STORAGE_KEY);
+      if (last) room = validateRoom(JSON.parse(last));
+    }
+    if (room) {
+      rememberRoom();
+      try {
+        const cache = localStorage.getItem(`youqi.cache.${room.id}.${room.token}`);
+        if (cache) { state = validateCountdown(JSON.parse(cache)); cloudCache = true; }
+      } catch { /* A fresh server read will replace an invalid cache. */ }
+      state ||= defaultCountdown();
+    }
+  } catch (error) {
+    if (params.has('room') || params.has('key')) {
+      toast(error.message);
+      room = null;
+      invalidRoomLink = true;
+      $('share-button').disabled = true;
+    }
+  }
   if (params.has('c')) {
     try { state = decodeShare(params.get('c')); sharedView = true; }
     catch (error) { toast(error.message); }
   }
-  if (!state) { state = readLocal() || defaultCountdown(); persist(); }
+  if (!state) { state = readLocal() || defaultCountdown(); if (!invalidRoomLink) persist(); }
   setSaveLabel();
   let theme;
   try { theme = localStorage.getItem('youqi.theme'); } catch { /* Theme falls back to system preference. */ }
   applyTheme(theme === 'dark' || theme === 'light' ? theme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   renderMetadata();
+  setEditAccess();
   tick();
+  if (room) refreshCloud();
 }
 
 function renderMetadata() {
+  if (invalidRoomLink || room && !cloudCache) {
+    document.title = '共享倒计时 · 有期';
+    $('event-title').textContent = invalidRoomLink ? '共享链接无效' : cloudStatus === 'loading' ? '正在读取共享倒计时' : '暂未读取到共享倒计时';
+    for (const id of ['start-date', 'start-time', 'end-date', 'end-time']) $(id).textContent = '—';
+    renderTime();
+    return;
+  }
   document.title = `${state.title} · 有期`;
   $('event-title').textContent = state.title;
   $('start-date').textContent = dateFormat.format(new Date(state.start));
@@ -73,6 +182,15 @@ function renderMetadata() {
 }
 
 function renderTime() {
+  if (invalidRoomLink || room && !cloudCache) {
+    for (const part of ['days', 'hours', 'minutes', 'seconds']) $(part).textContent = '—';
+    $('status-label').textContent = !invalidRoomLink && cloudStatus === 'loading' ? '连接中' : '未连接';
+    $('event-kicker').textContent = '共享同一份期待';
+    $('target-caption').textContent = invalidRoomLink ? '请向分享者索取完整的共享链接' : cloudStatus === 'setup' ? '请先完成云端数据库初始化' : cloudStatus === 'denied' ? '请向分享者索取有效链接' : '连接成功后显示最新标题与时间';
+    $('progress-caption').textContent = '等待云端数据';
+    $('progress-value').textContent = '—';
+    return;
+  }
   const value = getCountdown(state);
   for (const part of ['days', 'hours', 'minutes', 'seconds']) $(part).textContent = pad(value[part]);
   $('days').classList.toggle('long-number', value.days >= 1000);
@@ -97,7 +215,9 @@ function tick() {
 }
 
 function openEdit(field = 'title-input') {
+  if (room && (!cloudRecord || !cloudRecord.canEdit)) return;
   editingBaseline = JSON.stringify(state);
+  editingVersion = cloudRecord?.version;
   externalEdit = false;
   $('title-input').value = state.title;
   $('start-input').value = toLocalInput(state.start);
@@ -111,21 +231,43 @@ for (const id of ['edit-button', 'bottom-edit']) $(id).addEventListener('click',
 $('start-edit').addEventListener('click', () => openEdit('start-input'));
 $('end-edit').addEventListener('click', () => openEdit('end-input'));
 
-$('edit-form').addEventListener('submit', event => {
+$('edit-form').addEventListener('submit', async event => {
   event.preventDefault();
-  if (externalEdit || editingBaseline !== JSON.stringify(state)) {
-    $('form-error').textContent = '另一个标签页已修改此倒计时。请关闭后重新打开编辑，避免覆盖新内容。';
+  if (writingCloud) return;
+  if (externalEdit || editingBaseline !== JSON.stringify(state) || room && editingVersion !== cloudRecord?.version) {
+    $('form-error').textContent = '倒计时已被更新。请关闭后重新打开编辑，避免覆盖新内容。';
     return;
   }
+  let next;
   try {
     const title = $('title-input').value;
     const start = new Date($('start-input').value).toISOString();
     const end = new Date($('end-input').value).toISOString();
-    state = validateCountdown({ title, start, end });
+    next = validateCountdown({ title, start, end });
   } catch (error) {
     $('form-error').textContent = error instanceof RangeError ? '请填写有效的开始和截止时间。' : error.message;
     return;
   }
+  if (room) {
+    writingCloud = true;
+    cloudStatus = 'saving'; setSaveLabel();
+    const submit = $('edit-form').querySelector('[type=submit]');
+    submit.disabled = true;
+    try {
+      applyCloudRecord(await cloud.update(room, next, editingVersion));
+      cloudStatus = 'synced'; cloudFailures = 0;
+      $('edit-dialog').close();
+      toast('已保存到云端，对方将自动收到更新。');
+    } catch (error) {
+      $('form-error').textContent = error.message;
+      cloudStatus = error.code === 'ACCESS' ? 'denied' : error.code === 'SETUP' ? 'setup' : 'offline';
+    } finally {
+      writingCloud = false; submit.disabled = false; setSaveLabel(); refreshCloud();
+    }
+    return;
+  }
+  state = next;
+  pendingRoom = null;
   persist();
   replaceShareHash();
   renderMetadata();
@@ -140,18 +282,51 @@ document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('c
 }));
 
 function makeShareUrl() {
+  if (room && cloudRecord) {
+    const viewOnly = !cloudRecord.canEdit || $('share-permission').value === 'view';
+    return roomUrl(location.href, { id: room.id, token: viewOnly ? cloudRecord.viewerToken || room.token : room.token });
+  }
   const url = new URL(location.href);
   url.search = '';
   url.hash = `c=${encodeShare(state)}`;
   return url.href;
 }
 
+function updateSharePanel() {
+  const live = !!room && !!cloudRecord;
+  $('share-title').textContent = room && !cloudCache ? '正在连接云端…' : state.title;
+  $('share-date').textContent = room && !cloudCache ? '' : dateFormat.format(new Date(state.end));
+  $('share-url').value = room && !cloudRecord ? location.href : makeShareUrl();
+  $('cloud-create').hidden = !!room;
+  $('permission-row').hidden = !live || !cloudRecord.canEdit;
+  $('share-kind').textContent = live ? '已开启云端共享' : room ? '共享倒计时尚未连接' : '当前为快照分享';
+  $('share-explanation').textContent = live ? cloudRecord.canEdit && $('share-permission').value !== 'view' ? '此链接允许共同编辑。任何一方保存后，另一方通常在 2 秒左右自动更新；网络和浏览器后台运行可能延长同步时间。' : '此链接仅允许查看。对方能自动收到最新设置，但不能修改标题和时间。' : room ? '联网并成功读取云端后，才能确认当前链接的访问权限。' : '快照链接保存当前设置，后续修改不会同步。点击下方「开启共同使用」，生成双方可持续同步的固定链接。';
+}
+
 $('share-button').addEventListener('click', () => {
-  $('share-title').textContent = state.title;
-  $('share-date').textContent = dateFormat.format(new Date(state.end));
-  $('share-url').value = makeShareUrl();
+  $('cloud-error').textContent = '';
+  updateSharePanel();
   $('share-dialog').showModal();
 });
+$('share-permission').addEventListener('change', updateSharePanel);
+$('cloud-create').addEventListener('click', async () => {
+  if (creatingCloud || room) return;
+  creatingCloud = true; $('cloud-create').disabled = true; $('cloud-error').textContent = '';
+  pendingRoom ||= newRoom();
+  try {
+    const next = await cloud.create(pendingRoom, state);
+    room = pendingRoom; sharedView = false;
+    rememberRoom();
+    applyCloudRecord(next);
+    cloudStatus = 'synced'; setSaveLabel(); updateSharePanel();
+    toast('共同使用已开启，请复制链接发给对方。');
+  } catch (error) { $('cloud-error').textContent = error.message; }
+  finally {
+    creatingCloud = false; $('cloud-create').disabled = false;
+    if (room) refreshCloud();
+  }
+});
+$('retry-sync').addEventListener('click', refreshCloud);
 $('share-url').addEventListener('click', () => $('share-url').select());
 $('copy-button').addEventListener('click', async () => {
   const input = $('share-url');
@@ -228,7 +403,7 @@ $('float-button').addEventListener('click', async () => {
 
 window.addEventListener('storage', event => {
   if (event.key === 'youqi.theme' && ['dark', 'light'].includes(event.newValue)) applyTheme(event.newValue);
-  if (event.key !== STORAGE_KEY || !event.newValue || sharedView) return;
+  if (event.key !== STORAGE_KEY || !event.newValue || sharedView || room) return;
   try {
     const next = validateCountdown(JSON.parse(event.newValue));
     if (JSON.stringify(next) === JSON.stringify(state)) return;
@@ -238,7 +413,8 @@ window.addEventListener('storage', event => {
     toast('已同步此浏览器另一个标签页的修改。');
   } catch { /* Ignore invalid external records. */ }
 });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); refreshCloud(); } });
+window.addEventListener('online', refreshCloud);
 window.addEventListener('pageshow', tick);
 window.addEventListener('hashchange', () => location.reload());
 initialize();
