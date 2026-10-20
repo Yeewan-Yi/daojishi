@@ -18,10 +18,11 @@ export function flightStage(phase, progress) {
 
 export function flightMarkup(prefix = 'journey') {
   if (!/^[a-z0-9-]+$/.test(prefix)) throw new Error('Invalid flight namespace');
-  return `<svg class="flight-svg" viewBox="0 0 800 448" role="img" aria-label="飞行进度，等待时间数据">
+  return `<svg class="flight-svg" viewBox="0 0 800 660" role="img" aria-label="飞行进度，等待时间数据">
     <defs>
       <linearGradient id="${prefix}-fuselage" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset=".48" stop-color="#f7faf7"/><stop offset="1" stop-color="#a4b7ad"/></linearGradient>
     </defs>
+    ${earthMarkup(prefix + '-globe', true)}
     <g class="sky-sparks" aria-hidden="true"><path d="M175 132v10m-5-5h10M632 134v7m-3.5-3.5h7"/><circle cx="274" cy="67" r="2"/><circle cx="555" cy="55" r="1.8"/><circle cx="98" cy="248" r="2"/><circle cx="704" cy="230" r="2"/></g>
     <path class="route-future" d="M115 370 A285 285 0 0 1 685 370" pathLength="100"/>
     <path class="route-past" data-flight="trail" d="M115 370 A285 285 0 0 1 685 370" pathLength="100" stroke-dasharray="0 100"/>
@@ -74,13 +75,13 @@ export function mountFlight(container, prefix) {
   };
 }
 
-export function earthMarkup() {
-  return `<svg class="earth-background-svg" viewBox="0 100 800 650" aria-hidden="true">
+export function earthMarkup(prefix = 'ambient', embedded = false) {
+  const markup = `<svg class="earth-background-svg" viewBox="0 100 800 650" aria-hidden="true">
     <defs><radialGradient id="ambient-earth"><stop stop-color="var(--earth-glow)"/><stop offset="1" stop-color="var(--earth-base)"/></radialGradient><clipPath id="ambient-clip"><circle cx="400" cy="370" r="230"/></clipPath></defs>
     <circle cx="400" cy="370" r="240" class="ambient-atmosphere"/>
     <circle cx="400" cy="370" r="230" fill="url(#ambient-earth)"/>
     <g clip-path="url(#ambient-clip)">
-      <g class="earth-land" aria-hidden="true">
+      <g class="earth-land" transform="translate(0 -91) scale(1 1.65)" aria-hidden="true">
         <path d="M185 217 208 196 222 199 238 181 256 179 268 165 293 163 306 175 303 190 321 193 333 207 326 223 309 226 301 241 286 241 277 252 263 249 254 265 239 265 236 246 215 244 207 232 187 233Z"/>
         <path d="M269 272 289 266 302 279 320 284 322 302 334 317 326 333 316 336 312 356 296 378 288 359 286 338 273 323 277 303 265 288Z"/>
         <path d="M354 160 375 150 390 155 398 170 387 182 370 180Z"/>
@@ -92,5 +93,6 @@ export function earthMarkup() {
 
       <g class="earth-grid"><path d="M170 370H630M182 442Q400 482 618 442M205 493Q400 550 595 493M400 140V600"/></g>
     </g>
-  </svg>`;
+  </svg>`.replaceAll('ambient-earth', `${prefix}-earth`).replaceAll('ambient-clip', `${prefix}-clip`);
+  return embedded ? markup.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '') : markup;
 }

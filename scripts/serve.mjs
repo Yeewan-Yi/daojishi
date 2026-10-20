@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
-const allowed = new Set(['/index.html', '/styles.css', '/flight.css', '/refined.css', '/flight.js', '/flip-clock.js', '/app.js', '/countdown.js', '/cloud.js', '/config.js', '/favicon.svg', '/experiments/golden-wheel.html', '/experiments/golden-wheel.css', '/experiments/golden-wheel.js']);
+const allowed = new Set(['/index.html', '/styles.css', '/flight.css', '/refined.css', '/scene.css', '/flight.js', '/flip-clock.js', '/app.js', '/countdown.js', '/cloud.js', '/config.js', '/favicon.svg', '/experiments/golden-wheel.html', '/experiments/golden-wheel.css', '/experiments/golden-wheel.js']);
 const port = Number(process.argv[2] || 4173);
 http.createServer(async (req, res) => {
   try {

@@ -1,10 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { flightPosition, flightStage } from '../flight.js';
+import { flightPosition, flightStage, flightMarkup } from '../flight.js';
 import { getCountdown } from '../countdown.js';
 
 const event = { title: '一次飞行', start: '2026-10-01T00:00:00Z', end: '2026-10-11T00:00:00Z' };
 const closeTo = (actual, expected) => assert.ok(Math.abs(actual - expected) < 0.00001, `${actual} should be ${expected}`);
+
+test('main view and floating window each resolve their own globe and aircraft SVG references', () => {
+  const allIds = new Set();
+  for (const prefix of ['main', 'mini']) {
+    const markup = flightMarkup(prefix);
+    assert.ok(markup.includes('class="earth-land"'));
+    assert.ok(!markup.includes('undefined'));
+    assert.equal((markup.match(/<svg\b/g) || []).length, 1);
+    const ids = [...markup.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+    for (const id of ids) {
+      assert.ok(!allIds.has(id), `duplicate SVG id: ${id}`);
+      allIds.add(id);
+    }
+    for (const [, reference] of markup.matchAll(/url\(#([^)]+)\)/g)) assert.ok(ids.includes(reference), `unresolved SVG reference: ${reference}`);
+  }
+});
 
 test('flight travels from departure through the hemisphere crown to arrival', () => {
   for (const [at, x, y, heading] of [[0,115,370,-90], [50,400,85,0], [100,685,370,90]]) {

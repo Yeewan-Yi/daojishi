@@ -1,6 +1,6 @@
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeShare, decodeShare, toLocalInput } from './countdown.js';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
-import { mountFlight, flightStage, earthMarkup } from './flight.js';
+import { mountFlight, flightStage } from './flight.js';
 import { mountFlipClock } from './flip-clock.js';
 
 const $ = id => document.getElementById(id);
@@ -30,7 +30,6 @@ let creatingCloud = false;
 let pendingRoom = null;
 let editingVersion = null;
 let invalidRoomLink = false;
-$('earth-background').innerHTML = earthMarkup();
 const mainFlight = mountFlight($('flight-visual'), 'main');
 const flipClock = mountFlipClock($('digits'));
 let pipFlight = null;
@@ -208,6 +207,7 @@ function renderTime() {
   const target = value.phase === 'upcoming' ? state.start : state.end;
   $('target-caption').textContent = `${value.phase === 'upcoming' ? '开始于' : '相约于'} ${dateFormat.format(new Date(target))} · ${weekdayFormat.format(new Date(target))} ${timeFormat.format(new Date(target))}`;
   const percent = `${value.progress.toFixed(3)}%`;
+  $('journey-percent').textContent = percent;
   $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(3)}%`;
   $('progress-bar').style.width = percent;
   $('progress-track').setAttribute('aria-valuenow', value.progress.toFixed(3));
@@ -423,4 +423,32 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { ti
 window.addEventListener('online', refreshCloud);
 window.addEventListener('pageshow', tick);
 window.addEventListener('hashchange', () => location.reload());
+function installScrollScene() {
+  const root = document.documentElement;
+  const story = $('main-content');
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  let frame = 0;
+  function paint() {
+    frame = 0;
+    const rect = story.getBoundingClientRect();
+    const range = Math.max(1, story.offsetHeight - innerHeight);
+    const progress = document.body.classList.contains('focus-mode') ? 1 : Math.min(1, Math.max(0, -rect.top / range));
+    const eased = progress * progress * (3 - 2 * progress);
+    const p = motion.matches ? (progress >= .5 ? 1 : 0) : eased;
+    root.style.setProperty('--scene-progress', p.toFixed(5));
+    const digits = $('digits');
+    const fit = Math.min(1, (innerWidth - (innerWidth < 520 ? 32 : 80)) / Math.max(digits.scrollWidth, 1));
+    root.style.setProperty('--clock-fit', fit.toFixed(5));
+    $('scroll-cue').hidden = progress > .1 || document.body.classList.contains('focus-mode');
+  }
+  function requestPaint() { if (!frame) frame = requestAnimationFrame(paint); }
+  addEventListener('scroll', requestPaint, { passive: true });
+  addEventListener('resize', requestPaint);
+  addEventListener('pageshow', requestPaint);
+  motion.addEventListener('change', requestPaint);
+  new ResizeObserver(requestPaint).observe($('digits'));
+  new MutationObserver(requestPaint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  paint();
+}
 initialize();
+installScrollScene();

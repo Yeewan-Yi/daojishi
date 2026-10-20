@@ -19,3 +19,4 @@ body{background:radial-gradient(ellipse at 77% 12%,#eee5ce66,transparent 52%),li
 :root[data-theme=dark] .aircraft{filter:drop-shadow(-2px 3px 3px #0006)}
 @media(max-width:520px){.earth-background{top:70px}.earth-background-svg{width:1050px;opacity:.5}.flight-position-label rect{width:154px;x:-77px}}
 .earth-background-svg{stroke:none}.earth-background .earth-land{stroke:none}
+.pip-body .flight-svg{height:220px}
