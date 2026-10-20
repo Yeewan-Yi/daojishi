@@ -1,6 +1,6 @@
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeShare, decodeShare, toLocalInput } from './countdown.js';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
-import { mountFlight, flightStage } from './flight.js';
+import { mountFlight, flightStage, earthMarkup } from './flight.js';
 import { mountFlipClock } from './flip-clock.js';
 
 const $ = id => document.getElementById(id);
@@ -30,6 +30,7 @@ let creatingCloud = false;
 let pendingRoom = null;
 let editingVersion = null;
 let invalidRoomLink = false;
+$('earth-background').innerHTML = earthMarkup();
 const mainFlight = mountFlight($('flight-visual'), 'main');
 const flipClock = mountFlipClock($('digits'));
 let pipFlight = null;
@@ -206,10 +207,10 @@ function renderTime() {
   $('timer-caption').textContent = { upcoming: '距离启程', active: '距离抵达', ended: '这一天，已经到来' }[value.phase];
   const target = value.phase === 'upcoming' ? state.start : state.end;
   $('target-caption').textContent = `${value.phase === 'upcoming' ? '开始于' : '相约于'} ${dateFormat.format(new Date(target))} · ${weekdayFormat.format(new Date(target))} ${timeFormat.format(new Date(target))}`;
-  const percent = `${value.progress.toFixed(1)}%`;
-  $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(1)}%`;
+  const percent = `${value.progress.toFixed(3)}%`;
+  $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(3)}%`;
   $('progress-bar').style.width = percent;
-  $('progress-track').setAttribute('aria-valuenow', value.progress.toFixed(1));
+  $('progress-track').setAttribute('aria-valuenow', value.progress.toFixed(3));
   $('progress-track').setAttribute('aria-valuetext', `${status}，航程完成 ${percent}`);
   $('progress-caption').textContent = { upcoming: '航班等待起飞', active: '沿着航线，慢慢靠近', ended: '航迹已完整点亮' }[value.phase];
   if (pipWindow && !pipWindow.closed) renderPip(value);
