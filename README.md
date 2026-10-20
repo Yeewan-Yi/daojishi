@@ -80,6 +80,8 @@ node --check cloud.js
 
 ## 悬浮小窗
 
+Windows 常驻桌面版本位于 [desktop](desktop/README.md)，支持可选置顶、托盘、开机启动、加密保存共享链接。与下面的浏览器悬浮窗独立，可在关闭浏览器后继续运行。安装包和便携版在仓库 Releases 中提供。
+
 在支持 `window.documentPictureInPicture` 的 HTTPS 桌面浏览器中点击「悬浮小窗」。小窗保持置顶，与原页面的时间、标题和主题同步。必须保留原网页；关闭原网页后小窗随之关闭。浏览器可能限制尺寸与外观，不支持时会提供专注模式入口。
 
 ## 时间说明

@@ -1,0 +1,25 @@
+name: Build Windows widget
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/desktop.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and verify native widget
+        shell: pwsh
+        run: ./desktop/build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Youqi-Windows
+          path: |
+            desktop/dist/Youqi-Setup.exe
+            desktop/dist/Youqi-Windows-Portable.zip
+          if-no-files-found: error

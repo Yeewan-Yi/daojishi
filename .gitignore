@@ -5,3 +5,4 @@ Thumbs.db
 test-results/
 .env
 .env.*
+desktop/dist/
