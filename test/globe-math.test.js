@@ -1,18 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampProgress, routePoint, routeTangent, spherePoint } from '../globe-math.js';
+import { AIRCRAFT_RADIUS, ROUTE_RADIUS, advanceZoom, clampProgress, routePoint, routeTangent, spherePoint } from '../globe-math.js';
 
 const close = (actual, expected, epsilon = 1e-9) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} should equal ${expected}`);
 
-test('the 3D plane stays at the same altitude over the entire spherical journey', () => {
+test('ground track hugs the globe while the plane retains a separate constant altitude', () => {
   for (let i = 0; i <= 1000; i++) {
     const point = routePoint(i / 1000);
-    close(Math.hypot(...point), 1.075);
+    close(Math.hypot(...point), ROUTE_RADIUS);
+    close(Math.hypot(...routePoint(i / 1000, AIRCRAFT_RADIUS)), AIRCRAFT_RADIUS);
     assert.ok(point[2] > 0);
   }
   close(routePoint(0)[0], -routePoint(1)[0]);
   close(routePoint(.5)[0], 0);
   assert.ok(routePoint(.5)[1] > routePoint(0)[1]);
+  assert.ok(ROUTE_RADIUS > 1 && ROUTE_RADIUS < 1.02);
+  assert.ok(AIRCRAFT_RADIUS > ROUTE_RADIUS);
+});
+
+test('reverse scrolling increases zoom and forward scrolling restores it within limits', () => {
+  close(advanceZoom(0, -325), .5);
+  close(advanceZoom(.5, 325), 0);
+  assert.equal(advanceZoom(.9, -1000), 1);
+  assert.equal(advanceZoom(.1, 1000), 0);
+  assert.equal(advanceZoom(.5, 0), .5);
 });
 
 test('the aircraft heading follows the route and is perpendicular to the surface normal', () => {

@@ -26,3 +26,26 @@ body.focus-mode main.scroll-story{height:100svh}body.focus-mode .app-shell{paddi
 body.focus-mode .globe-tools{display:none}
 @media(max-width:520px){.journey-stage .flight-visual.globe-3d{top:calc(55svh - var(--scene-progress)*10svh)}.globe-tools{top:calc(63svh - var(--scene-progress)*12svh);font-size:9px}.journey-progress-line{width:210px;height:3px;top:calc(100% + 15px)}}
 .journey-stage .flight-visual.globe-3d[data-interactive=false]{pointer-events:none}.globe-3d[data-interactive=false] .globe-canvas{cursor:default}
+
+/* At the start of the story, an extra reverse scroll inspects the globe. */
+:root{--globe-zoom:0}
+html{overscroll-behavior-y:none}
+.journey-stage .flight-visual:not(.globe-3d){transform:translate(-50%,-50%) scale(calc(1 + var(--scene-progress)*1.3 + var(--globe-zoom)*.4))}
+.journey-stage .flight-visual.globe-3d{top:calc(60svh - var(--scene-progress)*13svh + var(--globe-zoom)*4svh)}
+.countdown-reading{opacity:calc(1 - var(--globe-zoom)*.45)}
+.journey-percent{width:min(calc(190px + var(--scene-progress)*450px),calc(100% - 48px));height:calc(86px - var(--scene-progress)*14px);justify-content:center;gap:6px;isolation:isolate}
+.journey-percent>span,.journey-percent>small{position:relative;z-index:2}
+.journey-percent>span{font-size:calc(48px - var(--scene-progress)*21px)}
+.journey-percent>small{font-size:10px;letter-spacing:1.5px}
+.journey-progress-line{inset:0;left:0;top:0;width:100%;height:100%;transform:none;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 27%,transparent);border-radius:8px;background:color-mix(in srgb,var(--bg) 68%,transparent);box-shadow:inset 0 1px 3px #203a2005;opacity:clamp(0,calc(var(--scene-progress)*2.5),1)}
+.journey-progress-line>span{background:color-mix(in srgb,var(--accent) 21%,transparent);border-radius:0;border-right:1px solid color-mix(in srgb,var(--accent) 42%,transparent)}
+.journey-progress-line>span:after{display:none}
+body,:root[data-theme=dark] body{background:none;background-color:var(--bg);transition:background-color .55s ease,color .55s ease}
+body:before,body:after{content:'';position:fixed;inset:0;pointer-events:none;z-index:-2}
+body:before{background:radial-gradient(ellipse at 77% 12%,#eee5ce66,transparent 52%),linear-gradient(155deg,#f8f8f2 4%,#edf3ed 54%,#e4eeea 100%)}
+body:after{z-index:-1;background:radial-gradient(ellipse at 77% 12%,#25322515,transparent 55%),linear-gradient(155deg,#0b1210,#0d1915 65%,#0a1513);opacity:0;transition:opacity .55s ease}
+:root[data-theme=dark] body:after{opacity:1}
+:root[data-theme=dark]{--bg:#0b1210;--surface:#111b16;--text:#c7d1c1;--muted:#718278;--subtle:#8a9c8c;--accent:#879f7d;--accent-strong:#a6ba9b;--accent-soft:#1b2a20;--line:#243229;--input:#0f1913;--wash:#15231a;--flip-paper:#18241d;--flip-seam:#0a120d}
+.brand,.button,.icon-button,.text-button,.journey-percent,.journey-status,.date-value,.date-label,.date-time,.digit-label,.flip-face,.journey-progress-line,.journey-progress-line>span{transition:color .55s ease,background-color .55s ease,border-color .55s ease}
+@media(max-width:520px){.journey-stage .flight-visual.globe-3d{top:calc(55svh - var(--scene-progress)*10svh + var(--globe-zoom)*3svh)}.journey-percent{width:min(calc(160px + var(--scene-progress)*450px),calc(100% - 40px));height:calc(76px - var(--scene-progress)*10px)}.journey-percent>span{font-size:calc(35px - var(--scene-progress)*11px)}.journey-percent>small{font-size:9px}.journey-progress-line{width:100%;height:100%;top:0}}
+.journey-progress-line>span{transition:width .6s ease,background-color .55s ease,border-color .55s ease}

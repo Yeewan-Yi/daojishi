@@ -2,6 +2,7 @@ import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeS
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js';
 import { mountFlipClock } from './flip-clock.js';
+import { advanceZoom } from './globe-math.js';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -360,7 +361,7 @@ function applyTheme(theme) {
   const label = theme === 'dark' ? '切换浅色模式' : '切换深色模式';
   $('theme-button').setAttribute('aria-label', label);
   $('theme-button').title = label;
-  document.querySelector('meta[name=theme-color]').content = theme === 'dark' ? '#171d19' : '#f5f6f2';
+  document.querySelector('meta[name=theme-color]').content = theme === 'dark' ? '#0b1210' : '#f5f6f2';
   if (pipWindow && !pipWindow.closed) pipWindow.document.documentElement.dataset.theme = theme;
 }
 $('theme-button').addEventListener('click', () => {
@@ -436,9 +437,15 @@ function installScrollScene() {
   const root = document.documentElement;
   const story = $('main-content');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
-  let frame = 0;
-  function paint() {
+  let frame = 0, zoom = 0, zoomTarget = 0, previousPaint = performance.now(), touch = null;
+  function paint(now = performance.now()) {
     frame = 0;
+    const delta = Math.min(.1, (now - previousPaint) / 1000); previousPaint = now;
+    if (document.body.classList.contains('focus-mode') || scrollY > 1) zoomTarget = 0;
+    zoom = motion.matches ? zoomTarget : zoom + (zoomTarget - zoom) * (1 - Math.exp(-delta * 14));
+    if (Math.abs(zoom - zoomTarget) < .0005) zoom = zoomTarget;
+    root.style.setProperty('--globe-zoom', zoom.toFixed(5));
+    globe3d?.setZoom(zoom);
     const rect = story.getBoundingClientRect();
     const range = Math.max(1, story.offsetHeight - innerHeight);
     const progress = document.body.classList.contains('focus-mode') ? 1 : Math.min(1, Math.max(0, -rect.top / range));
@@ -453,8 +460,35 @@ function installScrollScene() {
     const fit = Math.min(1, (innerWidth - (innerWidth < 520 ? 32 : 80)) / Math.max(digits.scrollWidth, 1));
     root.style.setProperty('--clock-fit', fit.toFixed(5));
     $('scroll-cue').hidden = progress > .1 || document.body.classList.contains('focus-mode');
+    if (zoom !== zoomTarget) requestPaint();
   }
   function requestPaint() { if (!frame) frame = requestAnimationFrame(paint); }
+  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select');
+  addEventListener('wheel', event => {
+    if (event.ctrlKey || !canZoom(event.target) || scrollY > 1) return;
+    if (event.deltaY < 0 || zoomTarget > 0) {
+      event.preventDefault();
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? innerHeight : 1);
+      zoomTarget = advanceZoom(zoomTarget, delta); requestPaint();
+    }
+  }, { passive: false });
+  addEventListener('touchstart', event => {
+    touch = event.touches.length === 1 && canZoom(event.target) ? { x: event.touches[0].clientX, y: event.touches[0].clientY, axis: null, controlled: false } : null;
+  }, { passive: true });
+  addEventListener('touchmove', event => {
+    if (!touch || event.touches.length !== 1 || !canZoom(event.target)) return;
+    const point = event.touches[0], dx = point.clientX - touch.x, dy = point.clientY - touch.y;
+    if (!touch.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 6) touch.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    if (touch.axis !== 'y') return;
+    touch.x = point.clientX; touch.y = point.clientY;
+    if (scrollY <= 1 && (dy > 0 || zoomTarget > 0)) {
+      event.preventDefault(); touch.controlled = true;
+      zoomTarget = advanceZoom(zoomTarget, -dy * 2); requestPaint();
+    } else if (touch.controlled) { event.preventDefault(); window.scrollBy(0, -dy); }
+  }, { passive: false });
+  addEventListener('touchend', () => { touch = null; }, { passive: true });
+  addEventListener('touchcancel', () => { touch = null; }, { passive: true });
+  addEventListener('journey-view-reset', () => { zoomTarget = 0; requestPaint(); });
   addEventListener('scroll', requestPaint, { passive: true });
   addEventListener('resize', requestPaint);
   addEventListener('pageshow', requestPaint);
@@ -470,6 +504,7 @@ import('./globe-3d.js').then(async ({ mountGlobe }) => {
   if (!globe3d) return;
   if (latestGlobeValue) globe3d.update(latestGlobeValue);
   globe3d.setScroll(Number(getComputedStyle(document.documentElement).getPropertyValue('--scene-progress')) || 0);
+  globe3d.setZoom(Number(getComputedStyle(document.documentElement).getPropertyValue('--globe-zoom')) || 0);
   document.body.classList.add('has-globe-3d');
 }).catch(() => { /* Keep the SVG journey usable if 3D resources cannot load. */ });
 $('globe-reset').addEventListener('click', () => globe3d?.reset());

@@ -5,10 +5,17 @@ export function spherePoint(longitude, latitude, radius = 1) {
   return [radius * Math.cos(lat) * Math.sin(lon), radius * Math.sin(lat), radius * Math.cos(lat) * Math.cos(lon)];
 }
 
-// A raised small-circle route stays on the same sphere at every progress value.
-export function routePoint(progress, radius = 1.075) {
+export const ROUTE_RADIUS = 1.012;
+export const AIRCRAFT_RADIUS = 1.065;
+
+// Keep the ground track close to the surface, independently of aircraft altitude.
+export function routePoint(progress, radius = ROUTE_RADIUS) {
   const angle = clampProgress(progress) * Math.PI;
   return [-.95 * Math.cos(angle) * radius, .95 * Math.sin(angle) * radius, Math.sqrt(1 - .95 ** 2) * radius];
+}
+
+export function advanceZoom(current, wheelDelta) {
+  return clampProgress(current - wheelDelta / 650);
 }
 
 export function routeTangent(progress) {

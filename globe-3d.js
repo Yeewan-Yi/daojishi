@@ -1,8 +1,8 @@
 import * as THREE from './vendor/three.module.js';
-import { clampProgress, spherePoint, routePoint, routeTangent } from './globe-math.js';
+import { AIRCRAFT_RADIUS, clampProgress, spherePoint, routePoint, routeTangent } from './globe-math.js';
 
 const lightPalette = { ocean: '#e7eee3', land: '#b1c4a5', coast: '#a2b799', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
-const darkPalette = { ocean: '#243d33', land: '#66845d', coast: '#76946b', grid: '#637c5f', route: '#d2dfb7', future: '#8ca67b', halo: '#6f986e' };
+const darkPalette = { ocean: '#22352c', land: '#40563e', coast: '#456047', grid: '#455e48', route: '#a7bd91', future: '#596e57', halo: '#3a5944' };
 const vector = values => new THREE.Vector3(...values);
 
 function earthTexture(data, palette) {
@@ -93,10 +93,21 @@ export async function mountGlobe(container) {
   const scene = new THREE.Scene(), world = new THREE.Group(); scene.add(world);
   const camera = new THREE.PerspectiveCamera(35, 800 / 660, .1, 30);
   camera.position.set(0, .08, 4.4); camera.lookAt(0, .02, 0);
-  scene.add(new THREE.HemisphereLight('#f6f7ed', '#759478', 2));
+  const ambient = new THREE.HemisphereLight('#f6f7ed', '#759478', 2); scene.add(ambient);
   const sun = new THREE.DirectionalLight('#fff5df', 2.3); sun.position.set(-3, 4, 5); scene.add(sun);
   const rim = new THREE.DirectionalLight('#b3d2cc', 1.1); rim.position.set(3, 1, -2); scene.add(rim);
   const sphereMaterial = new THREE.MeshStandardMaterial({ roughness: .95, metalness: .025 });
+  const initialTheme = document.documentElement.dataset.theme === 'dark' ? 1 : 0;
+  const themeUniform = { value: initialTheme };
+  const dayTexture = earthTexture(data, lightPalette), nightTexture = earthTexture(data, darkPalette);
+  sphereMaterial.map = dayTexture;
+  sphereMaterial.onBeforeCompile = shader => {
+    shader.uniforms.nightMap = { value: nightTexture };
+    shader.uniforms.themeBlend = themeUniform;
+    shader.fragmentShader = 'uniform sampler2D nightMap;uniform float themeBlend;\n' + shader.fragmentShader;
+    const mapChunk = THREE.ShaderChunk.map_fragment.replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', 'vec4 sampledDiffuseColor = mix(texture2D(map,vMapUv),texture2D(nightMap,vMapUv),themeBlend);');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', mapChunk);
+  };
   const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), sphereMaterial); world.add(sphere);
   const gridMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: .17, depthWrite: false });
   world.add(new THREE.LineSegments(gridGeometry(), gridMaterial));
@@ -132,21 +143,38 @@ export async function mountGlobe(container) {
   route.add(shadow);
 
   const homeYaw = .32, homePitch = .12;
-  let palette, progress = 0, phase = 'pending', scroll = 0, targetYaw = homeYaw, targetPitch = homePitch, yaw = homeYaw, pitch = homePitch;
-  let drag = null, touched = false, dragging = false, frame = 0, lastFrame = 0, visible = !document.hidden;
+  const dayColors = {}, nightColors = {}, palette = {};
+  for (const key of Object.keys(lightPalette)) {
+    dayColors[key] = new THREE.Color(lightPalette[key]); nightColors[key] = new THREE.Color(darkPalette[key]);
+    palette[key] = dayColors[key].clone().lerp(nightColors[key], initialTheme);
+  }
+  let themeMix = initialTheme, themeFrom = initialTheme, themeTarget = initialTheme, themeStarted = 0;
+  let progress = 0, phase = 'pending', scroll = 0, targetYaw = homeYaw, targetPitch = homePitch, yaw = homeYaw, pitch = homePitch;
+  let drag = null, touched = false, dragging = false, zoomChanging = false, cameraZoom = 0, frame = 0, lastFrame = 0, visible = !document.hidden;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   function theme() {
-    palette = document.documentElement.dataset.theme === 'dark' ? darkPalette : lightPalette;
-    const previous = sphereMaterial.map; sphereMaterial.map = earthTexture(data, palette); previous?.dispose(); sphereMaterial.needsUpdate = true;
-    gridMaterial.color.set(palette.grid); futureMaterial.color.set(palette.future); trailMaterial.color.set(palette.route); atmosphere.uniforms.glow.value.set(palette.halo);
-    markers.forEach(marker => marker.dot.material.color.set(marker.progress <= progress ? palette.route : palette.future));
+    themeFrom = themeMix;
+    themeTarget = document.documentElement.dataset.theme === 'dark' ? 1 : 0;
+    themeStarted = performance.now();
     invalidate();
+  }
+  function updateTheme(now) {
+    const t = motion.matches ? 1 : Math.min(1, (now - themeStarted) / 550);
+    themeMix = THREE.MathUtils.lerp(themeFrom, themeTarget, t * t * (3 - 2 * t));
+    themeUniform.value = themeMix;
+    for (const key of Object.keys(palette)) palette[key].copy(dayColors[key]).lerp(nightColors[key], themeMix);
+    gridMaterial.color.copy(palette.grid); futureMaterial.color.copy(palette.future); trailMaterial.color.copy(palette.route); atmosphere.uniforms.glow.value.copy(palette.halo);
+    markers.forEach(marker => marker.dot.material.color.copy(marker.progress <= progress ? palette.route : palette.future));
+    ambient.intensity = THREE.MathUtils.lerp(2, .8, themeMix);
+    sun.intensity = THREE.MathUtils.lerp(2.3, .9, themeMix); rim.intensity = THREE.MathUtils.lerp(1.1, .3, themeMix);
+    renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .8, themeMix);
+    return t < 1 && Math.abs(themeMix - themeTarget) > .0001;
   }
   function positionPlane() {
     const normal = vector(routePoint(progress, 1)).normalize(), tangent = vector(routeTangent(progress));
     const bank = normal.clone().multiplyScalar(.68).add(new THREE.Vector3(0, 0, .32)).normalize();
     const side = new THREE.Vector3().crossVectors(tangent, bank).normalize();
-    plane.position.copy(vector(routePoint(progress)));
+    plane.position.copy(vector(routePoint(progress, AIRCRAFT_RADIUS)));
     plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, tangent, bank));
     shadow.position.copy(normal.clone().multiplyScalar(1.006)); shadow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
     trailGeometry.setDrawRange(0, Math.floor(progress * 512) * 36);
@@ -156,8 +184,9 @@ export async function mountGlobe(container) {
   function draw(now) {
     frame = 0;
     if (!visible || canvas.dataset.contextLost === 'true') return;
+    const themeMoving = updateTheme(now);
     const settled = Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) < .0002;
-    if (!dragging && settled && !motion.matches && now - lastFrame < 32) { frame = requestAnimationFrame(draw); return; }
+    if (!dragging && !zoomChanging && settled && !themeMoving && !motion.matches && now - lastFrame < 32) { frame = requestAnimationFrame(draw); return; }
     const delta = Math.min((now - lastFrame) / 1000 || .016, .1); lastFrame = now;
     const follow = 1 - Math.exp(-delta * 12);
     yaw = motion.matches ? targetYaw : yaw + (targetYaw - yaw) * follow;
@@ -165,8 +194,9 @@ export async function mountGlobe(container) {
     const idle = !touched && !motion.matches && scroll < .9;
     world.rotation.set(pitch + (idle ? Math.sin(now / 19000) * .012 : 0), yaw + (idle ? Math.sin(now / 23000) * .026 : 0), -.07);
     renderer.render(scene, camera);
+    zoomChanging = false;
     const moving = Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) > .0002;
-    if ((idle || moving || dragging) && scroll < .98) frame = requestAnimationFrame(draw);
+    if (((idle || moving || dragging) && scroll < .98) || themeMoving) frame = requestAnimationFrame(draw);
   }
   function invalidate() { if (!frame && visible) frame = requestAnimationFrame(draw); }
   function resize() {
@@ -194,7 +224,7 @@ export async function mountGlobe(container) {
   });
   function stopDrag() { drag = null; dragging = false; canvas.classList.remove('is-dragging'); }
   canvas.addEventListener('pointerup', stopDrag); canvas.addEventListener('pointercancel', stopDrag); canvas.addEventListener('lostpointercapture', stopDrag);
-  function reset() { targetYaw = homeYaw; targetPitch = homePitch; touched = false; delete container.dataset.rotated; invalidate(); }
+  function reset() { targetYaw = homeYaw; targetPitch = homePitch; touched = false; delete container.dataset.rotated; window.dispatchEvent(new Event('journey-view-reset')); invalidate(); }
   canvas.addEventListener('keydown', event => {
     if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(event.key)) return;
     canvas.classList.remove('is-pointer-focus');
@@ -217,6 +247,7 @@ export async function mountGlobe(container) {
   return {
     update(value) { progress = clampProgress(value.progress / 100); phase = value.phase; positionPlane(); invalidate(); },
     pending() { phase = 'pending'; positionPlane(); invalidate(); },
+    setZoom(value) { const next = clampProgress(value); zoomChanging ||= Math.abs(next - cameraZoom) > .00001; cameraZoom = next; camera.position.z = 4.4 - cameraZoom * .9; invalidate(); },
     setScroll(value) {
       scroll = value; canvas.tabIndex = scroll < .5 ? 0 : -1;
       container.dataset.interactive = scroll < .5 ? 'true' : 'false';
