@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Euler, PerspectiveCamera, Vector3 } from '../vendor/three.module.js';
-import { AIRCRAFT_RADIUS, ROUTE_RADIUS, SURVEY_TICK_RADIUS, SURVEY_TILT, advanceZoom, advanceExploration, explorationInput, aircraftBeacon, clampProgress, dampProgress, easeViewReset, explorationCameraDistance, explorationProgress, nearestAngle, percentageParts, resetPose, routePoint, routeTangent, spherePoint, useAircraftLabel } from '../globe-math.js';
+import { AIRCRAFT_RADIUS, ROUTE_RADIUS, advanceZoom, advanceExploration, explorationInput, aircraftBeacon, clampProgress, dampProgress, easeViewReset, globeCameraDistance, nearestAngle, percentageParts, resetPose, routePoint, routeTangent, spherePoint, useAircraftLabel } from '../globe-math.js';
 
 const close = (actual, expected, epsilon = 1e-9) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} should equal ${expected}`);
 
@@ -38,19 +37,17 @@ test('reverse scrolling increases zoom and forward scrolling restores it within 
   assert.equal(advanceZoom(.5, 0), .5);
 });
 
-test('an accidental large wheel event cannot enter immersion, but deliberate sustained input can', () => {
+test('a single wheel flick cannot fully zoom, while sustained wheel and trackpad input can', () => {
   const flick = advanceExploration(0,-2000,40);
-  assert.ok(flick < .24); assert.equal(explorationProgress(flick),0);
+  assert.ok(flick > 0 && flick < .24);
   let deliberate = 0;
   for(let i=0;i<7;i++) deliberate=advanceExploration(deliberate,-120,40);
-  assert.equal(deliberate,1);assert.equal(explorationProgress(deliberate),1);
+  assert.equal(deliberate,1);
   let trackpad=0;
   for(let i=0;i<100;i++)trackpad=advanceExploration(trackpad,-20,10);
   assert.equal(trackpad,1);
   assert.ok(advanceExploration(.5,120,40)<.5);
   assert.equal(advanceExploration(0,1000,40),0);
-  assert.equal(explorationProgress(.24),0);
-  assert.equal(explorationProgress(.9),1);
 });
 
 test('surface progress switches before the limb and uses hysteresis to avoid flicker', () => {
@@ -72,16 +69,10 @@ test('aircraft labels remain in view even when the aircraft passes behind the gl
   }
 });
 
-test('the complete outer survey scale fits within the canvas at every exploration zoom', () => {
-  const camera=new PerspectiveCamera(35,800/660,.1,30),tilt=new Euler(...SURVEY_TILT);
-  for(let step=0;step<=20;step++){
-    const zoom=step/20;
-    camera.position.set(0,.08,explorationCameraDistance(zoom));camera.lookAt(0,.02,0);camera.updateMatrixWorld();
-    for(let i=0;i<720;i++){
-      const a=i/720*Math.PI*2,p=new Vector3(Math.cos(a)*SURVEY_TICK_RADIUS,Math.sin(a)*SURVEY_TICK_RADIUS,0).applyEuler(tilt).project(camera);
-      assert.ok(Math.abs(p.x)<.98 && Math.abs(p.y)<.98,`scale clipped at zoom ${zoom}: ${p.x}, ${p.y}`);
-    }
-  }
+test('simple zoom approaches continuously with a slightly larger bounded maximum', () => {
+  close(globeCameraDistance(0), 4.4); close(globeCameraDistance(1), 3.17);
+  close(globeCameraDistance(2), 3.17); close(globeCameraDistance(-1), 4.4);
+  for (let i=1;i<=100;i++) assert.ok(globeCameraDistance(i/100)<globeCameraDistance((i-1)/100));
 });
 
 test('percentage rounds to five decimals and separates only the final three digits', () => {

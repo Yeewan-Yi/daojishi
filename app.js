@@ -2,7 +2,7 @@ import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeS
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js';
 import { mountFlipClock } from './flip-clock.js';
-import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, explorationProgress, percentageParts } from './globe-math.js';
+import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -443,7 +443,6 @@ function installScrollScene() {
   const story = $('main-content');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let frame = 0, zoom = 0, zoomTarget = 0, scene = 0, previousPaint = performance.now(), touch = null, zoomReset = null, lastZoomInput = 0;
-  const header = document.querySelector('.header');
   function paint(now = performance.now()) {
     frame = 0;
     const delta = Math.min(.1, (now - previousPaint) / 1000); previousPaint = now;
@@ -455,9 +454,6 @@ function installScrollScene() {
     } else zoom = motion.matches ? zoomTarget : dampProgress(zoom, zoomTarget, delta, 8.5);
     if (!zoomReset && Math.abs(zoom - zoomTarget) < .0005) zoom = zoomTarget;
     root.style.setProperty('--globe-zoom', zoom.toFixed(5));
-    const immersion = globe3d ? explorationProgress(zoom) : 0;
-    root.style.setProperty('--globe-immersion', immersion.toFixed(5));
-    header.inert = immersion > .45;
     globe3d?.setZoom(zoom);
     const rect = story.getBoundingClientRect();
     const range = Math.max(1, story.offsetHeight - innerHeight);
@@ -476,7 +472,7 @@ function installScrollScene() {
     const digits = $('digits');
     const fit = Math.min(1, (innerWidth - (innerWidth < 520 ? 32 : 80)) / Math.max(digits.scrollWidth, 1));
     root.style.setProperty('--clock-fit', fit.toFixed(5));
-    $('scroll-cue').hidden = progress > .1 || immersion > .1 || document.body.classList.contains('focus-mode');
+    $('scroll-cue').hidden = progress > .1 || zoom > .1 || document.body.classList.contains('focus-mode');
     if (zoom !== zoomTarget || zoomReset || !motion.matches && scene !== eased) requestPaint();
   }
   function requestPaint() {

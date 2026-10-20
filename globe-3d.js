@@ -1,31 +1,17 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, SURVEY_RADIUS, SURVEY_TICK_RADIUS, SURVEY_TILT, VIEW_RESET_DURATION, clampProgress, explorationCameraDistance, explorationProgress, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js';
 import { mountSurfaceProgress } from './globe-labels.js';
 
 const lightPalette = { ocean: '#e7eee3', land: '#b1c4a5', coast: '#a2b799', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#22352c', land: '#40563e', coast: '#456047', grid: '#455e48', route: '#a7bd91', future: '#596e57', halo: '#3a5944' };
-const exploreDay = { ocean: '#8aafae', land: '#bdc3a1', coast: '#6f8b76', grid: '#607f7a', route: '#4c6552', future: '#718e82', halo: '#accbc6' };
-const exploreNight = { ocean: '#163441', land: '#526e5c', coast: '#81957a', grid: '#5f8190', route: '#ecd3a2', future: '#759c9f', halo: '#76a7ad' };
 const vector = values => new THREE.Vector3(...values);
 
-function earthTexture(data, palette, detailed = false) {
+function earthTexture(data, palette) {
   const canvas = document.createElement('canvas');
   canvas.width = 2048; canvas.height = 1024;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = palette.ocean; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  if (detailed) {
-    const wash = ctx.createLinearGradient(0, 0, 0, 1024); wash.addColorStop(0, '#eff4de29'); wash.addColorStop(.48, '#081c2614'); wash.addColorStop(1, '#18374633');
-    ctx.fillStyle = wash; ctx.fillRect(0, 0, 2048, 1024);
-    ctx.strokeStyle = '#d8eee619'; ctx.lineWidth = .7;
-    for (let row = 0; row < 90; row++) {
-      ctx.beginPath();
-      for (let x = 0; x <= 2048; x += 16) { const y = row * 12 + Math.sin(x / 155 + row * .29) * 8 + Math.sin(x / 53 + row * .8) * 2; if (x) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
-      ctx.stroke();
-    }
-  }
   ctx.fillStyle = palette.land; ctx.strokeStyle = palette.coast; ctx.lineWidth = .6;
-  let hatch;
-  if(detailed){const tile=document.createElement('canvas');tile.width=tile.height=16;const pen=tile.getContext('2d');pen.strokeStyle='#f4edce22';pen.lineWidth=.6;pen.beginPath();pen.moveTo(0,16);pen.lineTo(16,0);pen.stroke();hatch=ctx.createPattern(tile,'repeat');}
   for (const feature of data.features) {
     const polygons = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
     for (const polygon of polygons) {
@@ -38,7 +24,6 @@ function earthTexture(data, palette, detailed = false) {
         ctx.closePath();
       }
       ctx.fill('evenodd'); ctx.stroke();
-      if (detailed) { ctx.save(); ctx.fillStyle=hatch;ctx.fill('evenodd');ctx.restore(); }
     }
   }
   const texture = new THREE.CanvasTexture(canvas);
@@ -115,21 +100,16 @@ export async function mountGlobe(container) {
   const sphereMaterial = new THREE.MeshStandardMaterial({ roughness: .95, metalness: .025 });
   const initialTheme = document.documentElement.dataset.theme === 'dark' ? 1 : 0;
   const themeUniform = { value: initialTheme };
-  const explorationUniform = { value: 0 };
   const dayTexture = earthTexture(data, lightPalette), nightTexture = earthTexture(data, darkPalette);
-  const dayExploreTexture = earthTexture(data, exploreDay, true), nightExploreTexture = earthTexture(data, exploreNight, true);
   sphereMaterial.map = dayTexture;
   sphereMaterial.onBeforeCompile = shader => {
     shader.uniforms.nightMap = { value: nightTexture };
     shader.uniforms.themeBlend = themeUniform;
-    shader.uniforms.exploreDayMap = { value: dayExploreTexture }; shader.uniforms.exploreNightMap = { value: nightExploreTexture }; shader.uniforms.explorationBlend = explorationUniform;
-    shader.fragmentShader = 'uniform sampler2D nightMap;uniform sampler2D exploreDayMap;uniform sampler2D exploreNightMap;uniform float themeBlend;uniform float explorationBlend;\n' + shader.fragmentShader;
-    const mapChunk = THREE.ShaderChunk.map_fragment.replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', 'vec4 sampledDiffuseColor = mix(mix(texture2D(map,vMapUv),texture2D(nightMap,vMapUv),themeBlend),mix(texture2D(exploreDayMap,vMapUv),texture2D(exploreNightMap,vMapUv),themeBlend),explorationBlend);');
+    shader.fragmentShader = 'uniform sampler2D nightMap;uniform float themeBlend;\n' + shader.fragmentShader;
+    const mapChunk = THREE.ShaderChunk.map_fragment.replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', 'vec4 sampledDiffuseColor = mix(texture2D(map,vMapUv),texture2D(nightMap,vMapUv),themeBlend);');
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', mapChunk);
   };
   const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), sphereMaterial); world.add(sphere);
-  sphereMaterial.bumpMap = earthTexture(data, {ocean:'#555555',land:'#a5a5a5',coast:'#999999'}, true);
-  sphereMaterial.bumpMap.colorSpace = THREE.NoColorSpace;
   const gridMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: .17, depthWrite: false });
   world.add(new THREE.LineSegments(gridGeometry(), gridMaterial));
 
@@ -139,16 +119,6 @@ export async function mountGlobe(container) {
     fragmentShader: 'uniform vec3 glow;uniform float strength;varying vec3 n;varying vec3 v;void main(){float a=pow(1.-abs(dot(normalize(n),normalize(v))),3.);gl_FragColor=vec4(glow,a*strength);}'
   });
   world.add(new THREE.Mesh(new THREE.SphereGeometry(1.035, 64, 40), atmosphere));
-
-  const stars = [];
-  for(let i=0;i<260;i++){const a=i*2.399963, r=2.1+((i*73)%139)/38;stars.push(Math.cos(a)*r,Math.sin(a)*r,-2.3-(i%13)*.18);}
-  const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.Float32BufferAttribute(stars,3));
-  const starMaterial=new THREE.PointsMaterial({color:'#b6cfc5',size:.012,transparent:true,opacity:0,depthWrite:false});scene.add(new THREE.Points(starGeometry,starMaterial));
-  const survey=new THREE.Group();survey.rotation.set(...SURVEY_TILT);scene.add(survey);
-  const orbitVertices=[], ticks=[];
-  for(let i=0;i<240;i++){const a=i/240*Math.PI*2,b=(i+1)/240*Math.PI*2;orbitVertices.push(Math.cos(a)*SURVEY_RADIUS,Math.sin(a)*SURVEY_RADIUS,0,Math.cos(b)*SURVEY_RADIUS,Math.sin(b)*SURVEY_RADIUS,0);if(i%2===0){const end=i%10===0?SURVEY_TICK_RADIUS:SURVEY_RADIUS+.012;ticks.push(Math.cos(a)*SURVEY_RADIUS,Math.sin(a)*SURVEY_RADIUS,0,Math.cos(a)*end,Math.sin(a)*end,0);}}
-  const surveyGeometry=new THREE.BufferGeometry();surveyGeometry.setAttribute('position',new THREE.Float32BufferAttribute([...orbitVertices,...ticks],3));
-  const surveyMaterial=new THREE.LineBasicMaterial({color:'#c1b68b',transparent:true,opacity:0,depthWrite:false});survey.add(new THREE.LineSegments(surveyGeometry,surveyMaterial));
 
   const route = new THREE.Group(); world.add(route);
   const futureVertices = [];
@@ -183,7 +153,7 @@ export async function mountGlobe(container) {
   let themeMix = initialTheme, themeFrom = initialTheme, themeTarget = initialTheme, themeStarted = 0;
   let progress = 0, phase = 'pending', scroll = 0, targetYaw = homeYaw, targetPitch = homePitch, yaw = homeYaw, pitch = homePitch;
   let drag = null, touched = false, dragging = false, zoomChanging = false, cameraZoom = 0, frame = 0, lastFrame = 0, visible = !document.hidden;
-  let resetting = null, idleMix = 0, exploration = 0;
+  let resetting = null, idleMix = 0;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   function theme() {
     themeFrom = themeMix;
@@ -195,18 +165,12 @@ export async function mountGlobe(container) {
     const t = motion.matches ? 1 : Math.min(1, (now - themeStarted) / 550);
     themeMix = THREE.MathUtils.lerp(themeFrom, themeTarget, t * t * (3 - 2 * t));
     themeUniform.value = themeMix;
-    for (const key of Object.keys(palette)) palette[key].copy(dayColors[key]).lerp(nightColors[key], themeMix).lerp(new THREE.Color(exploreDay[key]).lerp(new THREE.Color(exploreNight[key]),themeMix),exploration);
-    explorationUniform.value = exploration;
+    for (const key of Object.keys(palette)) palette[key].copy(dayColors[key]).lerp(nightColors[key], themeMix);
     gridMaterial.color.copy(palette.grid); futureMaterial.color.copy(palette.future); trailMaterial.color.copy(palette.route); atmosphere.uniforms.glow.value.copy(palette.halo);
     markers.forEach(marker => marker.dot.material.color.copy(marker.progress <= progress ? palette.route : palette.future));
-    ambient.intensity = THREE.MathUtils.lerp(2 - exploration * 1.3, .8 - exploration * .5, themeMix);
-    sun.intensity = THREE.MathUtils.lerp(2.3 + exploration * .8, .9 + exploration * 1.2, themeMix); rim.intensity = THREE.MathUtils.lerp(1.1, .3 + exploration * 1.3, themeMix);
-    sun.position.set(-3 - exploration, 4 - exploration, 5 - exploration * 3);
-    rim.position.set(3 + exploration, 1 - exploration, -2 + exploration * 3);
-    renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .8 + exploration * .16, themeMix);
-    atmosphere.uniforms.strength.value = .17 + exploration * .26;
-    gridMaterial.opacity = .17 + exploration * .11; starMaterial.opacity = exploration * THREE.MathUtils.lerp(.15,.8,themeMix);surveyMaterial.opacity=exploration*(1-exploration*.9)*THREE.MathUtils.lerp(.26,.4,themeMix);
-    sphereMaterial.bumpScale = exploration*.05; sphereMaterial.roughness = .95-exploration*.18;
+    ambient.intensity = THREE.MathUtils.lerp(2, .8, themeMix);
+    sun.intensity = THREE.MathUtils.lerp(2.3, .9, themeMix); rim.intensity = THREE.MathUtils.lerp(1.1, .3, themeMix);
+    renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .8, themeMix);
     return t < 1 && Math.abs(themeMix - themeTarget) > .0001;
   }
   function positionPlane() {
@@ -239,7 +203,7 @@ export async function mountGlobe(container) {
     const idle = !touched && !motion.matches && scroll < .9;
     idleMix = motion.matches ? 0 : idleMix + ((idle ? 1 : 0) - idleMix) * follow;
     world.rotation.set(pitch + Math.sin(now / 19000) * .012 * idleMix, yaw + Math.sin(now / 23000) * .026 * idleMix, -.07);
-    surfaceProgress.update({camera,plane,progress:progress*100,phase,scroll,exploration,color:palette.route.getStyle()});
+    surfaceProgress.update({camera,plane,progress:progress*100,phase,scroll,color:palette.route.getStyle()});
     renderer.render(scene, camera);
     zoomChanging = false;
     const moving = Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) > .0002;
@@ -292,7 +256,7 @@ export async function mountGlobe(container) {
     event.preventDefault();
     if (event.key !== 'Home') interruptReset();
     touched = true;
-    if (event.key === 'Home') reset({preserveZoom:exploration>.1});
+    if (event.key === 'Home') reset({preserveZoom:cameraZoom>.1});
     else if (event.key === 'ArrowLeft') targetYaw -= .18;
     else if (event.key === 'ArrowRight') targetYaw += .18;
     else targetPitch = Math.max(-.75, Math.min(.8, targetPitch + (event.key === 'ArrowUp' ? -.12 : .12)));
@@ -310,7 +274,7 @@ export async function mountGlobe(container) {
   return {
     update(value) { progress = clampProgress(value.progress / 100); phase = value.phase; positionPlane(); invalidate(); },
     pending() { phase = 'pending'; positionPlane(); invalidate(); },
-    setZoom(value) { const next = clampProgress(value); zoomChanging ||= Math.abs(next - cameraZoom) > .00001; cameraZoom = next; exploration = explorationProgress(next); camera.position.z = explorationCameraDistance(next); invalidate(); },
+    setZoom(value) { const next = clampProgress(value); zoomChanging ||= Math.abs(next - cameraZoom) > .00001; cameraZoom = next; camera.position.z = globeCameraDistance(next); invalidate(); },
     setScroll(value) {
       scroll = value; canvas.tabIndex = scroll < .5 ? 0 : -1;
       container.dataset.interactive = scroll < .5 ? 'true' : 'false';

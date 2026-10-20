@@ -8,10 +8,8 @@ export function spherePoint(longitude, latitude, radius = 1) {
 export const ROUTE_RADIUS = 1.012;
 export const AIRCRAFT_RADIUS = 1.065;
 export const VIEW_RESET_DURATION = 800;
-export const SURVEY_RADIUS = 1.085;
-export const SURVEY_TICK_RADIUS = 1.11;
-export const SURVEY_TILT = [.1, -.06, -.33];
-export const explorationCameraDistance = zoom => 4.4 - clampProgress(zoom) * .7;
+// A small increase over the original 1.08 approach; zoom never changes the scene style.
+export const globeCameraDistance = zoom => 4.4 - clampProgress(zoom) * 1.23;
 
 export function easeViewReset(progress) {
   const t = clampProgress(progress);
@@ -56,11 +54,6 @@ export function explorationInput(current, delta, elapsed = 40) {
   // Hand the unused part of the very same gesture back to the document.
   const scroll = delta > 0 && step > 0 && zoom === 0 ? delta * Math.max(0, 1 - current / step) : 0;
   return { zoom, scroll };
-}
-
-export function explorationProgress(zoom) {
-  const t = clampProgress((zoom - .24) / .66);
-  return t * t * (3 - 2 * t);
 }
 
 export function useAircraftLabel(facing, previous, inside = true) {
