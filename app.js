@@ -31,6 +31,8 @@ let pendingRoom = null;
 let editingVersion = null;
 let invalidRoomLink = false;
 const mainFlight = mountFlight($('flight-visual'), 'main');
+let globe3d = null;
+let latestGlobeValue = null;
 const flipClock = mountFlipClock($('digits'));
 let pipFlight = null;
 
@@ -189,6 +191,10 @@ function renderMetadata() {
 
 function renderTime() {
   if (invalidRoomLink || room && !cloudCache) {
+    latestGlobeValue = null;
+    globe3d?.pending();
+    $('journey-percent').textContent = '—';
+    $('journey-progress-fill').style.width = '0%';
     flipClock.update({}, false);
     $('status-label').textContent = !invalidRoomLink && cloudStatus === 'loading' ? '连接中' : '未连接';
     $('event-kicker').textContent = '共享同一份期待';
@@ -198,6 +204,8 @@ function renderTime() {
     return;
   }
   const value = getCountdown(state);
+  latestGlobeValue = value;
+  globe3d?.update(value);
   flipClock.update(value);
   mainFlight.update(value, state);
   const status = flightStage(value.phase, value.progress).status;
@@ -208,6 +216,7 @@ function renderTime() {
   $('target-caption').textContent = `${value.phase === 'upcoming' ? '开始于' : '相约于'} ${dateFormat.format(new Date(target))} · ${weekdayFormat.format(new Date(target))} ${timeFormat.format(new Date(target))}`;
   const percent = `${value.progress.toFixed(3)}%`;
   $('journey-percent').textContent = percent;
+  $('journey-progress-fill').style.width = percent;
   $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(3)}%`;
   $('progress-bar').style.width = percent;
   $('progress-track').setAttribute('aria-valuenow', value.progress.toFixed(3));
@@ -436,6 +445,10 @@ function installScrollScene() {
     const eased = progress * progress * (3 - 2 * progress);
     const p = motion.matches ? (progress >= .5 ? 1 : 0) : eased;
     root.style.setProperty('--scene-progress', p.toFixed(5));
+    globe3d?.setScroll(p);
+    $('globe-reset').tabIndex = p < .12 ? 0 : -1;
+    document.querySelector('.globe-tools').inert = p >= .12;
+    document.querySelector('.globe-tools').style.pointerEvents = p < .12 ? 'auto' : 'none';
     const digits = $('digits');
     const fit = Math.min(1, (innerWidth - (innerWidth < 520 ? 32 : 80)) / Math.max(digits.scrollWidth, 1));
     root.style.setProperty('--clock-fit', fit.toFixed(5));
@@ -452,3 +465,11 @@ function installScrollScene() {
 }
 initialize();
 installScrollScene();
+import('./globe-3d.js').then(async ({ mountGlobe }) => {
+  globe3d = await mountGlobe($('flight-visual'));
+  if (!globe3d) return;
+  if (latestGlobeValue) globe3d.update(latestGlobeValue);
+  globe3d.setScroll(Number(getComputedStyle(document.documentElement).getPropertyValue('--scene-progress')) || 0);
+  document.body.classList.add('has-globe-3d');
+}).catch(() => { /* Keep the SVG journey usable if 3D resources cannot load. */ });
+$('globe-reset').addEventListener('click', () => globe3d?.reset());
