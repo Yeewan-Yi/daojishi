@@ -84,6 +84,10 @@ Windows 常驻桌面版本位于 [desktop](desktop/README.md)，支持可选置�
 
 在支持 `window.documentPictureInPicture` 的 HTTPS 桌面浏览器中点击「悬浮小窗」。小窗保持置顶，与原页面的时间、标题和主题同步。必须保留原网页；关闭原网页后小窗随之关闭。浏览器可能限制尺寸与外观，不支持时会提供专注模式入口。
 
+## 字体说明
+
+网页字体：倒计时数字采用 Libre Baskerville，航程百分比与航行数字采用 IBM Plex Mono，其余数字采用 Times New Roman。汉字使用项目所有者提供的方正宋刻本秀楷简体，保留原字体字符覆盖并转换为 WOFF2，同源加载；数字通过独立字体范围避免被中文字体替换。数字字体及许可见 `fonts.css` 和 `vendor/FONT-LICENSES.txt`，方正字体说明见 `THIRD_PARTY_NOTICES.md`。
+
 ## 时间说明
 
 使用设备时钟与目标绝对时间的差值计算，而不是每秒累减，因此休眠、切换后台或重新打开后会重新校准。精度仍依赖设备系统时间。编辑时按设备当地时区输入，共享时保存 UTC 时间。

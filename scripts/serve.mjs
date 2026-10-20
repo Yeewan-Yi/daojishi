@@ -2,8 +2,8 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.geojson': 'application/geo+json' };
-const allowed = new Set(['/index.html', '/styles.css', '/flight.css', '/refined.css', '/scene.css', '/globe-3d.js', '/globe-math.js', '/land.geojson', '/vendor/three.module.js', '/flight.js', '/flip-clock.js', '/app.js', '/countdown.js', '/cloud.js', '/config.js', '/favicon.svg', '/experiments/golden-wheel.html', '/experiments/golden-wheel.css', '/experiments/golden-wheel.js']);
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.geojson': 'application/geo+json', '.woff2': 'font/woff2' };
+const allowed = new Set(['/index.html', '/styles.css', '/flight.css', '/refined.css', '/scene.css', '/fonts.css', '/globe-3d.js', '/globe-math.js', '/land.geojson', '/vendor/three.module.js', '/vendor/FZSongKeBenXiuKaiS.woff2', '/flight.js', '/flip-clock.js', '/app.js', '/countdown.js', '/cloud.js', '/config.js', '/favicon.svg', '/experiments/golden-wheel.html', '/experiments/golden-wheel.css', '/experiments/golden-wheel.js']);
 const port = Number(process.argv[2] || 4173);
 http.createServer(async (req, res) => {
   try {

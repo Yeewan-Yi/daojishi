@@ -405,7 +405,7 @@ $('float-button').addEventListener('click', async () => {
     doc.title = '有期 · 悬浮倒计时';
     doc.documentElement.lang = 'zh-CN';
     doc.documentElement.dataset.theme = document.documentElement.dataset.theme;
-    for (const file of ['styles.css', 'flight.css', 'refined.css']) {
+    for (const file of ['styles.css', 'flight.css', 'refined.css', 'fonts.css']) {
       const link = doc.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(file, document.baseURI).href;
       doc.head.append(link);
     }
