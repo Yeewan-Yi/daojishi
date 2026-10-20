@@ -5,9 +5,9 @@ if (-not (Test-Path -LiteralPath $compiler)) { throw '.NET Framework 4.8 compile
 $output = [System.IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $output -Force | Out-Null
 $references = @('/r:System.Windows.Forms.dll', '/r:System.Drawing.dll', '/r:System.Net.Http.dll', '/r:System.Web.Extensions.dll', '/r:System.Security.dll')
-& $compiler /nologo /target:winexe /optimize+ /main:Youqi.Program "/win32manifest:$PSScriptRoot\app.manifest" "/out:$output\YouqiWidget.exe" @references "$PSScriptRoot\Widget.cs"
+& $compiler /nologo /target:winexe /optimize+ /main:Youqi.Program "/win32manifest:$PSScriptRoot\app.manifest" "/out:$output\YouqiWidget.exe" @references "$PSScriptRoot\Widget.cs" "$PSScriptRoot\WidgetArt.cs"
 if ($LASTEXITCODE -ne 0) { throw 'Widget compilation failed' }
-& $compiler /nologo /target:exe /optimize+ /main:Tests "/out:$output\WidgetTests.exe" @references "$PSScriptRoot\Widget.cs" "$PSScriptRoot\Tests.cs"
+& $compiler /nologo /target:exe /optimize+ /main:Tests "/out:$output\WidgetTests.exe" @references "$PSScriptRoot\Widget.cs" "$PSScriptRoot\WidgetArt.cs" "$PSScriptRoot\Tests.cs"
 if ($LASTEXITCODE -ne 0) { throw 'Test compilation failed' }
 & "$output\WidgetTests.exe"
 if ($LASTEXITCODE -ne 0) { throw 'Widget tests failed' }

@@ -20,6 +20,7 @@ public sealed class Settings {
  public string Link = "";
  public string Theme = "system";
  public bool Pinned;
+ public string SizeMode = "compact";
  public int X = int.MinValue, Y;
  public Record Cache;
  public static readonly string DirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "YouqiWidget");
@@ -95,24 +96,25 @@ public sealed class Widget : Form {
  readonly NotifyIcon tray=new NotifyIcon();
  readonly ContextMenuStrip menu=new ContextMenuStrip();
  readonly ToolTip tips=new ToolTip();
- Button pin, edit, more;
+ IconButton pin, edit, more;
  ToolStripMenuItem pinned, startup;
  bool busy, connecting, quitting, connected;
  string state="正在同步";
+ string lastTip="";
  Record record;
  Color ink, muted, accent, track;
  [DllImport("user32.dll")] static extern bool ReleaseCapture();
  [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h,int m,IntPtr w,IntPtr l);
  public Widget() {
   Text="有期 · 桌面倒计时"; AccessibleName=Text; FormBorderStyle=FormBorderStyle.None; ShowInTaskbar=false;
-  AutoScaleMode=AutoScaleMode.Dpi; ClientSize=new Size(356,190); DoubleBuffered=true; Font=new Font("Microsoft YaHei UI",9);
+  AutoScaleMode=AutoScaleMode.None; ClientSize=SelectedWindowSize(); DoubleBuffered=true; Font=new Font("Microsoft YaHei UI",9);
   StartPosition=FormStartPosition.Manual;
   Rectangle area=Screen.PrimaryScreen.WorkingArea;
   Location=settings.X==int.MinValue ? new Point(area.Right-ClientSize.Width-28,area.Top+36) : new Point(settings.X,settings.Y);
   EnsureVisible(); TopMost=settings.Pinned; record=settings.Cache;
-  pin=MakeButton("钉住",new Rectangle(195,12,48,27),TogglePin);
-  edit=MakeButton("编辑",new Rectangle(245,12,48,27),OpenEditor);
-  more=MakeButton("···",new Rectangle(300,12,36,27),delegate { menu.Show(more,new Point(0,more.Height)); });
+  pin=MakeButton("置顶",0,TogglePin);
+  edit=MakeButton("编辑",1,OpenEditor);
+  more=MakeButton("更多",2,delegate { menu.Show(more,new Point(0,more.Height)); });
   tips.SetToolTip(pin,"切换始终置顶"); tips.SetToolTip(edit,"在浏览器中打开完整界面"); tips.SetToolTip(more,"更多设置 / 隐藏 / 退出");
   menu.Items.Add("显示小组件",null,delegate { Show(); EnsureVisible(); Activate(); });
   menu.Items.Add("打开完整界面",null,delegate { OpenEditor(); });
@@ -121,6 +123,9 @@ public sealed class Widget : Form {
   var theme=new ToolStripMenuItem("外观");
   foreach(string name in new[]{"跟随系统","浅色","深色"}) { string mode=name=="浅色"?"light":name=="深色"?"dark":"system"; theme.DropDownItems.Add(name,null,delegate {settings.Theme=mode; Persist(); ApplyTheme();}); }
   menu.Items.Add(theme);
+  var sizes=new ToolStripMenuItem("小窗尺寸");
+  foreach(string name in new[]{"精简","标准","大号"}) {string mode=name=="精简"?"compact":name=="标准"?"normal":"large";var item=new ToolStripMenuItem(name,null,delegate {settings.SizeMode=mode;ClientSize=SelectedWindowSize();LayoutActions();UpdateRegion();EnsureVisible();Persist();});sizes.DropDownItems.Add(item);sizes.DropDownOpening+=delegate {item.Checked=settings.SizeMode==mode;};}
+  menu.Items.Add(sizes);
   startup=new ToolStripMenuItem("开机启动",null,delegate { ToggleStartup(); }); menu.Items.Add(startup);
   menu.Items.Add("立即同步",null,async delegate { await RefreshCloud(); });
   menu.Items.Add("隐藏到托盘",null,delegate { Persist(); Hide(); }); menu.Items.Add(new ToolStripSeparator());
@@ -130,16 +135,20 @@ public sealed class Widget : Form {
   tray.DoubleClick+=delegate {Show();EnsureVisible();Activate();};
   MouseDown+=delegate(object sender, MouseEventArgs e) {if(e.Button==MouseButtons.Left) {ReleaseCapture();SendMessage(Handle,0xA1,new IntPtr(2),IntPtr.Zero);} else if(e.Button==MouseButtons.Right) menu.Show(this,e.Location);};
   Move+=delegate {if(IsHandleCreated && Visible){settings.X=Left;settings.Y=Top;}};
-  Resize+=delegate { using(var path=Round(new RectangleF(0,0,ClientSize.Width,ClientSize.Height),18)) Region=new Region(path); };
+  Resize+=delegate { LayoutActions(); UpdateRegion(); };
   tick.Tick+=delegate {ApplyTheme();Invalidate();}; sync.Tick+=async delegate {await RefreshCloud();};
   ApplyTheme();
-  Shown+=async delegate { using(var path=Round(new RectangleF(0,0,ClientSize.Width,ClientSize.Height),18)) Region=new Region(path); tick.Start();sync.Start(); if(String.IsNullOrEmpty(settings.Link)) await Connect(); else await RefreshCloud();};
+  Shown+=async delegate { EnsureVisible(); UpdateRegion(); tick.Start();sync.Start(); if(String.IsNullOrEmpty(settings.Link)) await Connect(); else await RefreshCloud();};
   FormClosing+=delegate(object sender,FormClosingEventArgs e) {if(!quitting && e.CloseReason==CloseReason.UserClosing) {e.Cancel=true;Persist();Hide();} else {Persist();tick.Stop();sync.Stop();tray.Visible=false;}};
  }
- Button MakeButton(string text,Rectangle bounds,Action action) { var b=new Button {Text=text,AccessibleName=text,Bounds=bounds,FlatStyle=FlatStyle.Flat,TabStop=true,Cursor=Cursors.Hand}; b.FlatAppearance.BorderSize=0; b.Click+=delegate {action();}; Controls.Add(b); return b; }
+ IconButton MakeButton(string name,int kind,Action action) {var b=new IconButton(kind) {AccessibleName=name,TabStop=true,Cursor=Cursors.Hand};b.Click+=delegate {action();};Controls.Add(b);return b;}
+ void LayoutActions() {if(pin==null || more==null)return;float scale=ClientSize.Width/356f;pin.Bounds=Rectangle.Round(new RectangleF(228*scale,10*scale,32*scale,32*scale));edit.Bounds=Rectangle.Round(new RectangleF(266*scale,10*scale,32*scale,32*scale));more.Bounds=Rectangle.Round(new RectangleF(304*scale,10*scale,32*scale,32*scale));}
+ void UpdateRegion() {if(ClientSize.Width<1)return;using(var path=Round(new RectangleF(0,0,ClientSize.Width,ClientSize.Height),14*ClientSize.Width/356f)){var old=Region;Region=new Region(path);if(old!=null)old.Dispose();}}
+ Size SelectedWindowSize() {int width=settings.SizeMode=="large"?428:settings.SizeMode=="normal"?356:300;return new Size(width,(int)Math.Round(width*176.0/356));}
+ protected override void OnHandleCreated(EventArgs e) {base.OnHandleCreated(e);ClientSize=SelectedWindowSize();LayoutActions();UpdateRegion();EnsureVisible();}
  void Persist() {try {settings.Save();} catch {state="设置暂未保存";} }
  void EnsureVisible() {var bounds=Screen.FromPoint(Location).WorkingArea; Location=new Point(Math.Max(bounds.Left,Math.Min(Left,bounds.Right-Width)),Math.Max(bounds.Top,Math.Min(Top,bounds.Bottom-Height)));}
- void TogglePin() {TopMost=!TopMost;settings.Pinned=TopMost;pin.Text=TopMost?"已置顶":"钉住";Persist();Invalidate();}
+ void TogglePin() {TopMost=!TopMost;settings.Pinned=TopMost;pin.Active=TopMost;pin.AccessibleName=TopMost?"取消置顶":"置顶";tips.SetToolTip(pin,TopMost?"取消置顶":"始终置顶");Persist();pin.Invalidate();Invalidate();}
  void OpenEditor() {if(String.IsNullOrEmpty(settings.Link)) {var unused=Connect();return;} try {System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Room.Parse(settings.Link).Url) {UseShellExecute=true});} catch {MessageBox.Show(this,"无法打开浏览器，请检查默认浏览器设置。","有期");}}
  bool IsStartup() {using(var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")) {return key!=null && Convert.ToString(key.GetValue("YouqiWidget"))=="\""+Application.ExecutablePath+"\"";}}
  void ToggleStartup() {try {using(var key=Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")) {if(IsStartup()) key.DeleteValue("YouqiWidget",false); else key.SetValue("YouqiWidget","\""+Application.ExecutablePath+"\"");}} catch {MessageBox.Show(this,"开机启动设置未保存。","有期");}}
@@ -178,34 +187,19 @@ public sealed class Widget : Form {
   if(BackColor==bg)return;
   BackColor=bg;ink=dark?Color.FromArgb(229,234,224):Color.FromArgb(43,55,45);muted=dark?Color.FromArgb(143,158,147):Color.FromArgb(115,128,114);accent=dark?Color.FromArgb(163,188,154):Color.FromArgb(91,119,83);track=dark?Color.FromArgb(40,51,43):Color.FromArgb(222,229,215);
   foreach(Control c in Controls) {c.BackColor=bg;c.ForeColor=muted;} menu.BackColor=bg;menu.ForeColor=ink;
-  pin.Text=TopMost?"已置顶":"钉住";Invalidate();
+  pin.Active=TopMost;pin.Invalidate();Invalidate();
  }
  public static GraphicsPath Round(RectangleF r,float radius) {var p=new GraphicsPath();float d=radius*2;p.AddArc(r.X,r.Y,d,d,180,90);p.AddArc(r.Right-d,r.Y,d,d,270,90);p.AddArc(r.Right-d,r.Bottom-d,d,d,0,90);p.AddArc(r.X,r.Bottom-d,d,d,90,90);p.CloseFigure();return p;}
- void Draw(Graphics g,string text,float size,Color color,RectangleF r,StringAlignment align) {using(var f=new Font(size>=24?"Segoe UI":"Microsoft YaHei UI",size,FontStyle.Regular,GraphicsUnit.Pixel))using(var b=new SolidBrush(color))using(var format=new StringFormat {Alignment=align,LineAlignment=StringAlignment.Center,Trimming=StringTrimming.EllipsisCharacter,FormatFlags=StringFormatFlags.NoWrap}) g.DrawString(text,f,b,r,format);}
  protected override void OnPaint(PaintEventArgs e) {
-  base.OnPaint(e);var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.TextRenderingHint=System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-  float sx=ClientSize.Width/356f, sy=ClientSize.Height/190f;g.ScaleTransform(sx,sy);
-  using(var pen=new Pen(Color.FromArgb(65,muted),1))using(var shape=Round(new RectangleF(.5f,.5f,355,189),18))g.DrawPath(pen,shape);
-  Draw(g,record==null?"有期":record.Title,14,ink,new RectangleF(20,13,170,27),StringAlignment.Near);
-  var now=DateTimeOffset.Now;
-  if(record!=null) {
-   long remaining=record.Remaining(now);long days=remaining/86400;string clock=String.Format("{0:00} : {1:00} : {2:00}",remaining/3600%24,remaining/60%60,remaining%60);
-   Draw(g,days.ToString(CultureInfo.InvariantCulture),48,ink,new RectangleF(17,49,125,59),StringAlignment.Near);
-   Draw(g,"天",12,muted,new RectangleF(22,106,100,22),StringAlignment.Near);
-   Draw(g,clock,28,ink,new RectangleF(140,56,196,42),StringAlignment.Far);
-   Draw(g,now<record.StartTime?"距离启程":now>=record.EndTime?"已抵达":"距离抵达",11,muted,new RectangleF(140,102,193,22),StringAlignment.Far);
-   double progress=record.Progress(now);var rect=new RectangleF(20,139,316,31);
-   using(var b=new SolidBrush(track))using(var p=Round(rect,9))g.FillPath(b,p);
-   if(progress>0) {var old=g.Save();using(var p=Round(rect,9))g.SetClip(p);using(var b=new SolidBrush(Color.FromArgb(70,accent)))g.FillRectangle(b,rect.X,rect.Y,(float)(rect.Width*progress/100),rect.Height);g.Restore(old);}
-   Draw(g,progress.ToString("F3",CultureInfo.InvariantCulture)+"%",13,accent,rect,StringAlignment.Center);
-  } else {Draw(g,state,16,muted,new RectangleF(20,65,316,50),StringAlignment.Center);}
-  using(var b=new SolidBrush(connected?accent:muted))g.FillEllipse(b,21,179,4,4);
-  Draw(g,state,9,muted,new RectangleF(30,173,300,14),StringAlignment.Near);
+  base.OnPaint(e);var now=DateTimeOffset.Now;
+  WidgetArt.Paint(e.Graphics,ClientSize,BackColor,ink,muted,accent,track,record,now,state,connected);
+  string nextTip=(record==null?"有期":record.Title)+" · "+state;
+  if(nextTip!=lastTip){lastTip=nextTip;tips.SetToolTip(this,nextTip);}
   AccessibleDescription=record==null?state:record.Title+"，剩余 "+record.Remaining(now)+" 秒，进度 "+record.Progress(now).ToString("F3")+"%，"+state;
  }
  static Icon CreateIcon() {using(var bitmap=new Bitmap(32,32))using(var g=Graphics.FromImage(bitmap)){g.SmoothingMode=SmoothingMode.AntiAlias;g.Clear(Color.Transparent);using(var b=new SolidBrush(Color.FromArgb(91,119,83)))g.FillEllipse(b,1,1,30,30);using(var p=new Pen(Color.White,2)){g.DrawEllipse(p,8,8,16,16);g.DrawLine(p,16,11,16,16);g.DrawLine(p,16,16,20,18);}IntPtr h=bitmap.GetHicon();try{return (Icon)Icon.FromHandle(h).Clone();}finally{DestroyIcon(h);}}}
  [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr icon);
- protected override void WndProc(ref Message message) {base.WndProc(ref message);if(message.Msg==0x232){settings.X=Left;settings.Y=Top;Persist();}}
+ protected override void WndProc(ref Message message) {base.WndProc(ref message);if(message.Msg==0x02E0){ClientSize=SelectedWindowSize();LayoutActions();UpdateRegion();EnsureVisible();}if(message.Msg==0x232){settings.X=Left;settings.Y=Top;Persist();}}
  protected override void Dispose(bool disposing) {if(disposing){tick.Dispose();sync.Dispose();tray.Dispose();menu.Dispose();tips.Dispose();cloud.Dispose();}base.Dispose(disposing);}
 }
 }
