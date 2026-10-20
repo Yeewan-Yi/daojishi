@@ -1,9 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Euler, PerspectiveCamera, Vector3 } from '../vendor/three.module.js';
-import { AIRCRAFT_RADIUS, ROUTE_RADIUS, SURVEY_TICK_RADIUS, SURVEY_TILT, advanceZoom, advanceExploration, aircraftBeacon, clampProgress, dampProgress, easeViewReset, explorationCameraDistance, explorationProgress, nearestAngle, percentageParts, resetPose, routePoint, routeTangent, spherePoint, useAircraftLabel } from '../globe-math.js';
+import { AIRCRAFT_RADIUS, ROUTE_RADIUS, SURVEY_TICK_RADIUS, SURVEY_TILT, advanceZoom, advanceExploration, explorationInput, aircraftBeacon, clampProgress, dampProgress, easeViewReset, explorationCameraDistance, explorationProgress, nearestAngle, percentageParts, resetPose, routePoint, routeTangent, spherePoint, useAircraftLabel } from '../globe-math.js';
 
 const close = (actual, expected, epsilon = 1e-9) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} should equal ${expected}`);
+
+test('the gesture that finishes shrinking immediately hands its unused distance to page scrolling', () => {
+  assert.deepEqual(explorationInput(.5, 100), {zoom:.3, scroll:0});
+  const boundary = explorationInput(.1, 100);
+  close(boundary.zoom, 0); close(boundary.scroll, 50);
+  assert.deepEqual(explorationInput(0, 100), {zoom:0, scroll:100});
+  assert.equal(explorationInput(0, -100).scroll, 0);
+  let zoom = 1, distance = 0;
+  for (let i = 0; i < 10; i++) { const next = explorationInput(zoom, 120); zoom = next.zoom; distance += next.scroll; }
+  assert.equal(zoom, 0); assert.ok(distance > 500);
+});
 
 test('ground track hugs the globe while the plane retains a separate constant altitude', () => {
   for (let i = 0; i <= 1000; i++) {

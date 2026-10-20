@@ -38,12 +38,24 @@ export function advanceZoom(current, wheelDelta) {
   return clampProgress(current - wheelDelta / 650);
 }
 
-export function advanceExploration(current, delta, elapsed = 40) {
+function explorationStep(current, delta, elapsed) {
   const distance = Math.min(160, Math.abs(delta));
   const interval = Math.max(8, Math.min(120, elapsed));
   const limit = interval >= 32 ? .22 : interval / 1000 * (delta < 0 ? 1.8 : 2.4);
-  const step = Math.min(distance / (delta < 0 ? 550 + current * 450 : 500), limit);
+  return Math.min(distance / (delta < 0 ? 550 + current * 450 : 500), limit);
+}
+
+export function advanceExploration(current, delta, elapsed = 40) {
+  const step = explorationStep(current, delta, elapsed);
   return clampProgress(current + (delta < 0 ? step : -step));
+}
+
+export function explorationInput(current, delta, elapsed = 40) {
+  const step = explorationStep(current, delta, elapsed);
+  const zoom = advanceExploration(current, delta, elapsed);
+  // Hand the unused part of the very same gesture back to the document.
+  const scroll = delta > 0 && step > 0 && zoom === 0 ? delta * Math.max(0, 1 - current / step) : 0;
+  return { zoom, scroll };
 }
 
 export function explorationProgress(zoom) {

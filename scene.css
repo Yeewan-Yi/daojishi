@@ -60,26 +60,26 @@ body:after{z-index:-1;background:radial-gradient(ellipse at 77% 12%,#25322515,tr
 .globe-tools .icon-button:hover,.globe-tools .icon-button:focus-visible{background:transparent;border-color:transparent;color:var(--text);opacity:1}
 @media(max-width:520px){.journey-percent{width:min(calc(180px + var(--scene-progress)*430px),calc(100% - 40px))}}
 
-/* Exploration grows out of the story rather than opening a separate page. */
+/* Enlargement continues within the original journey composition. */
+main.scroll-story{overflow-anchor:none}
 :root{--globe-immersion:0}
-body.is-globe-zooming main.scroll-story{position:fixed;inset:0;height:100svh}
 .header{opacity:clamp(0,calc(1 - var(--globe-immersion)*2.2),1);transform:translate(-50%,calc(var(--globe-immersion)*-100px))}
-.journey-scene:before{content:'';position:absolute;inset:0;z-index:-1;opacity:var(--globe-immersion);background:radial-gradient(ellipse at 48% 44%,#d3e2d9 0%,#e8ede2 46%,#e3e8dc 78%,#d6dfd6 100%);pointer-events:none}
-:root[data-theme=dark] .journey-scene:before{background:radial-gradient(ellipse at 49% 48%,#143139 0%,#0a1a22 48%,#070f18 80%,#050b13 100%)}
-.journey-stage .flight-visual.globe-3d{top:calc(60svh - var(--scene-progress)*13svh - var(--globe-immersion)*10svh);width:min(calc(94vw + var(--globe-immersion)*14vw),calc(105svh + var(--globe-immersion)*11svh));opacity:calc(1 - var(--scene-progress)*.82)}
-.globe-canvas{mask-image:linear-gradient(to bottom,rgba(0,0,0,var(--globe-immersion)) 0%,#000 10%,#000 calc(42% + var(--globe-immersion)*55%),rgba(0,0,0,var(--globe-immersion)) calc(82% + var(--globe-immersion)*18%))}
-.journey-stage .event-heading{opacity:clamp(0,calc(1 - var(--globe-immersion)*2.5),1);transform:translate(-50%,calc(var(--globe-immersion)*-22px))}
-.countdown-reading{opacity:clamp(0,calc(1 - var(--globe-immersion)*2.8),1)}
-.journey-scene .below-card{opacity:calc((.65 + var(--scene-progress)*.35)*(1 - var(--globe-immersion)));pointer-events:auto}
-body.is-exploring .below-card{pointer-events:none}
-.globe-tools{opacity:clamp(0,calc((1 - var(--scene-progress)*8)*(1 - var(--globe-immersion)*3)),1);gap:14px}
+.journey-scene:before{content:'';position:absolute;inset:0;z-index:-1;opacity:var(--globe-immersion);background:radial-gradient(ellipse at 48% 44%,#d3e2d9,#e8ede2 46%,#e3e8dc 78%,#d6dfd6);pointer-events:none}
+:root[data-theme=dark] .journey-scene:before{background:radial-gradient(ellipse at 49% 48%,#143139,#0a1a22 48%,#070f18 80%,#050b13)}
+.journey-stage .flight-visual.globe-3d{top:calc(60svh - var(--scene-progress)*13svh + var(--globe-immersion)*36svh);width:min(calc(94vw + var(--globe-immersion)*111vw),calc(105svh + var(--globe-immersion)*115svh));opacity:calc(1 - var(--scene-progress)*.82)}
+.globe-canvas{mask-image:linear-gradient(to bottom,transparent 0%,#000 calc(10% - var(--globe-immersion)*6%),#000 calc(42% - var(--globe-immersion)*12%),transparent calc(82% - var(--globe-immersion)*32%))}
+.journey-stage .event-heading{opacity:1;transform:translateX(-50%)}
+.countdown-reading{opacity:1}
+.journey-scene .below-card{opacity:calc(.65 + var(--scene-progress)*.35);pointer-events:auto}
+.globe-tools{top:calc(67svh - var(--scene-progress)*16svh + var(--globe-immersion)*21svh);opacity:clamp(0,calc(1 - var(--scene-progress)*8),1);gap:14px}
+.globe-tools .icon-button:disabled{opacity:.35;cursor:default}
 .has-globe-3d .journey-percent{opacity:0}
 :root[data-progress-display=flat] .has-globe-3d .journey-percent{opacity:1}
-.exploration-tools{position:absolute;z-index:8;bottom:26px;left:50%;transform:translate(-50%,calc((1 - var(--globe-immersion))*20px));width:min(760px,calc(100% - 48px));display:flex;justify-content:space-between;align-items:center;gap:20px;color:var(--accent-strong);opacity:clamp(0,calc((var(--globe-immersion) - .4)*2),1);pointer-events:none}
-.is-exploring .exploration-tools{pointer-events:auto}.exploration-tools .text-button{font-size:13px;gap:9px;padding:12px 0;min-width:62px}.exploration-tools svg{width:16px;height:16px}.exploration-tools>span{position:absolute;left:50%;bottom:calc(100svh - 70px);transform:translateX(-50%);font-size:14px;letter-spacing:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%;opacity:.8}
 .flight-progress-beacon{position:absolute;z-index:4;display:flex;align-items:center;justify-content:center;gap:8px;width:200px;height:44px;transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .22s ease;filter:drop-shadow(0 1px 7px var(--bg))}
 .flight-progress-beacon:before{content:'';position:absolute;left:9px;bottom:0;width:25px;height:1px;background:currentColor;opacity:.5;transform:rotate(-45deg);transform-origin:left}
 .flight-progress-beacon>svg{width:21px;height:21px;fill:currentColor;stroke:none;opacity:.9}
 .beacon-number{font-family:var(--font-flight);font-size:calc(18px + var(--globe-immersion)*5px);font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-1px}
 .beacon-minor,.beacon-sign{font-size:.72em}.beacon-sign{margin-left:2px}.flight-progress-beacon[data-occluded=true]>svg{opacity:.6}
-@media(max-width:520px){.journey-stage .flight-visual.globe-3d{top:calc(55svh - var(--scene-progress)*10svh - var(--globe-immersion)*5svh);width:calc(122vw - var(--globe-immersion)*12vw)}.exploration-tools{bottom:20px;width:calc(100% - 40px);gap:12px}.exploration-tools>span{font-size:12px;letter-spacing:1px}.flight-progress-beacon{width:152px;height:36px;gap:5px}.beacon-number{font-size:calc(14px + var(--globe-immersion)*3px)}.flight-progress-beacon>svg{width:17px;height:17px}}
+@media(max-width:520px){.journey-stage .flight-visual.globe-3d{top:calc(55svh - var(--scene-progress)*10svh + var(--globe-immersion)*(28vw - 5svh));width:calc(122vw + var(--globe-immersion)*83vw)}.globe-tools{top:calc(63svh - var(--scene-progress)*12svh + var(--globe-immersion)*25svh)}.flight-progress-beacon{width:152px;height:36px;gap:5px}.beacon-number{font-size:calc(14px + var(--globe-immersion)*3px)}.flight-progress-beacon>svg{width:17px;height:17px}}
+.journey-scene:after{content:'';position:absolute;inset:0;z-index:1;pointer-events:none;opacity:var(--globe-immersion);background:linear-gradient(to bottom,transparent 60%,var(--explore-edge) 98%),linear-gradient(to right,var(--explore-edge),transparent 12%,transparent 88%,var(--explore-edge));--explore-edge:#e3e8dc}
+:root[data-theme=dark] .journey-scene:after{--explore-edge:#0a1a22}

@@ -2,7 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import { aircraftBeacon, percentageParts, spherePoint, useAircraftLabel } from './globe-math.js';
 
 export function mountSurfaceProgress(world, container) {
-  const longitude = -18.3, latitude = 20, width = 54, height = 18, columns = 48, rows = 16;
+  const longitude = -18.3, latitude = 32, width = 54, height = 18, columns = 48, rows = 16;
   const positions = [], normals = [], uvs = [], indices = [];
   for (let y = 0; y <= rows; y++) for (let x = 0; x <= columns; x++) {
     const normal = spherePoint(longitude + (x / columns - .5) * width, latitude + (.5 - y / rows) * height);
@@ -37,7 +37,7 @@ export function mountSurfaceProgress(world, container) {
     texture.needsUpdate = true; major.textContent = parts.major; minor.textContent = parts.minor;
   }
   return {
-    update({ camera, plane, progress, phase, scroll, color }) {
+    update({ camera, plane, progress, phase, scroll, exploration = 0, color }) {
       paint(progress, color);
       const opacity = scroll < .18 ? 1 : 0, active = phase !== 'pending' && opacity > .001;
       mesh.visible = active;
@@ -56,7 +56,7 @@ export function mountSurfaceProgress(world, container) {
       const edge = new THREE.Vector3(1, 0, 0).project(camera), rect = container.getBoundingClientRect(), scale = rect.width / container.clientWidth;
       const width = container.clientWidth, height = container.clientHeight, half = innerWidth < 520 ? 80 : 104;
       const left = Math.max(half + 8, (12 - rect.left) / scale + half), right = Math.min(width - half - 8, (innerWidth - 12 - rect.left) / scale - half);
-      const top = Math.max(24, (16 - rect.top) / scale + 24), bottom = Math.min(height - 24, (innerHeight - 16 - rect.top) / scale - 24);
+      const top = Math.max(24, (16 - rect.top) / scale + 24), bottom = Math.min(height - 24, (innerHeight * (.94 - .25 * exploration) - 16 - rect.top) / scale - 24);
       const position = aircraftBeacon({ x: (p.x + 1) * width / 2, y: (1 - p.y) * height / 2 }, { x: (center.x + 1) * width / 2, y: (1 - center.y) * height / 2 }, Math.abs(edge.x - center.x) * width * .49, planeFacing > .08, { left, right: Math.max(left, right), top, bottom: Math.max(top, bottom) });
       beacon.style.left = `${position.x}px`; beacon.style.top = `${position.y}px`; beacon.style.color = color;
       beacon.dataset.occluded = String(planeFacing <= .08);

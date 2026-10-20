@@ -2,7 +2,7 @@ import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeS
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js';
 import { mountFlipClock } from './flip-clock.js';
-import { VIEW_RESET_DURATION, advanceExploration, dampProgress, easeViewReset, explorationProgress, percentageParts } from './globe-math.js';
+import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, explorationProgress, percentageParts } from './globe-math.js';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -181,7 +181,6 @@ function renderMetadata() {
   }
   document.title = `${state.title} · 有期`;
   $('event-title').textContent = state.title;
-  $('exploration-title').textContent = state.title;
   $('start-date').textContent = dateFormat.format(new Date(state.start));
   $('end-date').textContent = dateFormat.format(new Date(state.end));
   $('start-time').textContent = `${weekdayFormat.format(new Date(state.start))} · ${timeFormat.format(new Date(state.start))}`;
@@ -443,13 +442,12 @@ function installScrollScene() {
   const root = document.documentElement;
   const story = $('main-content');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
-  let frame = 0, zoom = 0, zoomTarget = 0, scene = 0, previousPaint = performance.now(), touch = null, zoomReset = null, lastZoomInput = 0, returnFocus = false, explorationFocused = false;
-  const header = document.querySelector('.header'), explorationTools = document.querySelector('.exploration-tools');
+  let frame = 0, zoom = 0, zoomTarget = 0, scene = 0, previousPaint = performance.now(), touch = null, zoomReset = null, lastZoomInput = 0;
+  const header = document.querySelector('.header');
   function paint(now = performance.now()) {
     frame = 0;
     const delta = Math.min(.1, (now - previousPaint) / 1000); previousPaint = now;
     if (document.body.classList.contains('focus-mode') || scrollY > 1) zoomTarget = 0;
-    document.body.classList.toggle('is-globe-zooming', !!globe3d && (zoom > .0005 || zoomTarget > 0) && scrollY <= 1);
     if (zoomReset) {
       const t = motion.matches ? 1 : Math.min(1, (now - zoomReset.started) / VIEW_RESET_DURATION);
       zoom = zoomReset.from * (1 - easeViewReset(t));
@@ -460,8 +458,6 @@ function installScrollScene() {
     const immersion = globe3d ? explorationProgress(zoom) : 0;
     root.style.setProperty('--globe-immersion', immersion.toFixed(5));
     header.inert = immersion > .45;
-    explorationTools.inert = immersion < .55;
-    document.body.classList.toggle('is-exploring', immersion > .55);
     globe3d?.setZoom(zoom);
     const rect = story.getBoundingClientRect();
     const range = Math.max(1, story.offsetHeight - innerHeight);
@@ -473,11 +469,10 @@ function installScrollScene() {
     root.style.setProperty('--scene-progress', p.toFixed(5));
     globe3d?.setScroll(p);
     $('globe-reset').tabIndex = p < .12 ? 0 : -1;
-    $('globe-enter').tabIndex = p < .12 && immersion < .45 ? 0 : -1;
-    document.querySelector('.globe-tools').inert = p >= .12 || immersion >= .45;
-    document.querySelector('.globe-tools').style.pointerEvents = p < .12 && immersion < .45 ? 'auto' : 'none';
-    if (immersion > .6 && !explorationFocused) { explorationFocused = true; document.querySelector('.globe-canvas')?.focus({preventScroll:true}); }
-    if (immersion < .01) { explorationFocused = false; if (returnFocus && p < .12) { returnFocus = false; $('globe-enter').focus({preventScroll:true}); } }
+    $('globe-enter').tabIndex = p < .12 ? 0 : -1;
+    $('globe-enter').disabled = zoomTarget >= .999;
+    document.querySelector('.globe-tools').inert = p >= .12;
+    document.querySelector('.globe-tools').style.pointerEvents = p < .12 ? 'auto' : 'none';
     const digits = $('digits');
     const fit = Math.min(1, (innerWidth - (innerWidth < 520 ? 32 : 80)) / Math.max(digits.scrollWidth, 1));
     root.style.setProperty('--clock-fit', fit.toFixed(5));
@@ -490,9 +485,11 @@ function installScrollScene() {
     frame = requestAnimationFrame(paint);
   }
   const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select');
-  function advanceView(delta) {
+  function advanceView(delta, scrollScale = 1) {
     const now = performance.now(), elapsed = now - lastZoomInput;
-    zoomTarget = advanceExploration(zoomTarget, delta, elapsed > 220 ? 40 : elapsed);
+    const next = explorationInput(zoomTarget, delta, elapsed > 220 ? 40 : elapsed);
+    zoomTarget = next.zoom;
+    if (next.scroll > 0) window.scrollBy({top:next.scroll * scrollScale,behavior:'instant'});
     lastZoomInput = now; requestPaint();
   }
   addEventListener('wheel', event => {
@@ -516,7 +513,7 @@ function installScrollScene() {
     if (scrollY <= 1 && (dy > 0 || zoomTarget > 0 || zoomReset && zoom > 0)) {
       event.preventDefault(); touch.controlled = true;
       if (zoomReset) { zoomTarget = zoom; zoomReset = null; }
-      advanceView(-dy * 2);
+      advanceView(-dy * 2, .5);
     } else if (touch.controlled) { event.preventDefault(); window.scrollBy(0, -dy); }
   }, { passive: false });
   addEventListener('touchend', () => { touch = null; }, { passive: true });
@@ -527,8 +524,7 @@ function installScrollScene() {
     zoomTarget = 0; requestPaint();
   });
   $('globe-enter').addEventListener('click', () => { if (!globe3d) return; window.scrollTo({top:0,behavior:'instant'}); zoomReset = null; zoomTarget = 1; requestPaint(); });
-  $('globe-exit').addEventListener('click', () => { returnFocus = true; globe3d?.reset(); });
-  addEventListener('keydown', event => { if (event.key === 'Escape' && !document.querySelector('dialog[open]') && zoomTarget > .2) { returnFocus = true; globe3d?.reset(); } });
+  addEventListener('keydown', event => { if (event.key === 'Escape' && !document.querySelector('dialog[open]') && zoomTarget > .2) globe3d?.reset(); });
   addEventListener('scroll', requestPaint, { passive: true });
   addEventListener('resize', requestPaint);
   addEventListener('pageshow', requestPaint);
@@ -548,4 +544,3 @@ import('./globe-3d.js').then(async ({ mountGlobe }) => {
   document.body.classList.add('has-globe-3d');
 }).catch(() => { /* Keep the SVG journey usable if 3D resources cannot load. */ });
 $('globe-reset').addEventListener('click', () => globe3d?.reset());
-$('exploration-reset').addEventListener('click', () => globe3d?.reset({ preserveZoom: true }));

@@ -128,7 +128,8 @@ export async function mountGlobe(container) {
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', mapChunk);
   };
   const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), sphereMaterial); world.add(sphere);
-  sphereMaterial.bumpMap = dayExploreTexture;
+  sphereMaterial.bumpMap = earthTexture(data, {ocean:'#555555',land:'#a5a5a5',coast:'#999999'}, true);
+  sphereMaterial.bumpMap.colorSpace = THREE.NoColorSpace;
   const gridMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: .17, depthWrite: false });
   world.add(new THREE.LineSegments(gridGeometry(), gridMaterial));
 
@@ -198,12 +199,14 @@ export async function mountGlobe(container) {
     explorationUniform.value = exploration;
     gridMaterial.color.copy(palette.grid); futureMaterial.color.copy(palette.future); trailMaterial.color.copy(palette.route); atmosphere.uniforms.glow.value.copy(palette.halo);
     markers.forEach(marker => marker.dot.material.color.copy(marker.progress <= progress ? palette.route : palette.future));
-    ambient.intensity = THREE.MathUtils.lerp(2, .8, themeMix) * (1 - exploration * .12);
-    sun.intensity = THREE.MathUtils.lerp(2.3, .9 + exploration * .8, themeMix); rim.intensity = THREE.MathUtils.lerp(1.1, .3 + exploration * 1.8, themeMix);
+    ambient.intensity = THREE.MathUtils.lerp(2 - exploration * 1.3, .8 - exploration * .5, themeMix);
+    sun.intensity = THREE.MathUtils.lerp(2.3 + exploration * .8, .9 + exploration * 1.2, themeMix); rim.intensity = THREE.MathUtils.lerp(1.1, .3 + exploration * 1.3, themeMix);
+    sun.position.set(-3 - exploration, 4 - exploration, 5 - exploration * 3);
+    rim.position.set(3 + exploration, 1 - exploration, -2 + exploration * 3);
     renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .8 + exploration * .16, themeMix);
     atmosphere.uniforms.strength.value = .17 + exploration * .26;
-    gridMaterial.opacity = .17 + exploration * .11; starMaterial.opacity = exploration * THREE.MathUtils.lerp(.15,.8,themeMix);surveyMaterial.opacity=exploration*THREE.MathUtils.lerp(.26,.4,themeMix);
-    sphereMaterial.bumpScale = -exploration*.038; sphereMaterial.roughness = .95-exploration*.18;
+    gridMaterial.opacity = .17 + exploration * .11; starMaterial.opacity = exploration * THREE.MathUtils.lerp(.15,.8,themeMix);surveyMaterial.opacity=exploration*(1-exploration*.9)*THREE.MathUtils.lerp(.26,.4,themeMix);
+    sphereMaterial.bumpScale = exploration*.05; sphereMaterial.roughness = .95-exploration*.18;
     return t < 1 && Math.abs(themeMix - themeTarget) > .0001;
   }
   function positionPlane() {
