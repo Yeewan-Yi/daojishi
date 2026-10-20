@@ -49,3 +49,13 @@ body:after{z-index:-1;background:radial-gradient(ellipse at 77% 12%,#25322515,tr
 .brand,.button,.icon-button,.text-button,.journey-percent,.journey-status,.date-value,.date-label,.date-time,.digit-label,.flip-face,.journey-progress-line,.journey-progress-line>span{transition:color .55s ease,background-color .55s ease,border-color .55s ease}
 @media(max-width:520px){.journey-stage .flight-visual.globe-3d{top:calc(55svh - var(--scene-progress)*10svh + var(--globe-zoom)*3svh)}.journey-percent{width:min(calc(160px + var(--scene-progress)*450px),calc(100% - 40px));height:calc(76px - var(--scene-progress)*10px)}.journey-percent>span{font-size:calc(35px - var(--scene-progress)*11px)}.journey-percent>small{font-size:9px}.journey-progress-line{width:100%;height:100%;top:0}}
 .journey-progress-line>span{transition:width .6s ease,background-color .55s ease,border-color .55s ease}
+
+/* Numeric hierarchy stays on one baseline while the story follows scroll with damping. */
+.journey-percent>span{display:inline-flex;align-items:baseline;font-family:'Comic Sans MS','Comic Sans',cursive;font-weight:400;letter-spacing:-1px}
+.journey-percent .percent-minor{font-size:.72em;letter-spacing:-.03em}
+.journey-percent .percent-sign{font-size:.72em;letter-spacing:0;margin-left:.08em}
+.journey-percent{width:min(calc(230px + var(--scene-progress)*410px),calc(100% - 48px))}
+.digits .digit,.digits .time-colon,.flip-face{font-family:'Times New Roman',Times,serif;font-weight:400}
+.globe-tools .icon-button{border-color:transparent;background:transparent;box-shadow:none;border-radius:0;opacity:.9;padding:0 8px;min-width:68px;transition:color .2s ease,opacity .2s ease}
+.globe-tools .icon-button:hover,.globe-tools .icon-button:focus-visible{background:transparent;border-color:transparent;color:var(--text);opacity:1}
+@media(max-width:520px){.journey-percent{width:min(calc(180px + var(--scene-progress)*430px),calc(100% - 40px))}}

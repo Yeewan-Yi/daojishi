@@ -2,7 +2,7 @@ import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeS
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js';
 import { mountFlipClock } from './flip-clock.js';
-import { advanceZoom } from './globe-math.js';
+import { VIEW_RESET_DURATION, advanceZoom, dampProgress, easeViewReset, percentageParts } from './globe-math.js';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -194,7 +194,9 @@ function renderTime() {
   if (invalidRoomLink || room && !cloudCache) {
     latestGlobeValue = null;
     globe3d?.pending();
-    $('journey-percent').textContent = '—';
+    $('percent-major').textContent = '—';
+    $('percent-minor').hidden = $('percent-sign').hidden = true;
+    $('journey-percent').setAttribute('aria-label', '正在读取航程');
     $('journey-progress-fill').style.width = '0%';
     flipClock.update({}, false);
     $('status-label').textContent = !invalidRoomLink && cloudStatus === 'loading' ? '连接中' : '未连接';
@@ -215,12 +217,15 @@ function renderTime() {
   $('timer-caption').textContent = { upcoming: '距离启程', active: '距离抵达', ended: '这一天，已经到来' }[value.phase];
   const target = value.phase === 'upcoming' ? state.start : state.end;
   $('target-caption').textContent = `${value.phase === 'upcoming' ? '开始于' : '相约于'} ${dateFormat.format(new Date(target))} · ${weekdayFormat.format(new Date(target))} ${timeFormat.format(new Date(target))}`;
-  const percent = `${value.progress.toFixed(3)}%`;
-  $('journey-percent').textContent = percent;
+  const parts = percentageParts(value.progress), percent = `${parts.text}%`;
+  $('percent-major').textContent = parts.major;
+  $('percent-minor').textContent = parts.minor;
+  $('percent-minor').hidden = $('percent-sign').hidden = false;
+  $('journey-percent').setAttribute('aria-label', percent);
   $('journey-progress-fill').style.width = percent;
-  $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(3)}%`;
+  $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(5)}%`;
   $('progress-bar').style.width = percent;
-  $('progress-track').setAttribute('aria-valuenow', value.progress.toFixed(3));
+  $('progress-track').setAttribute('aria-valuenow', parts.text);
   $('progress-track').setAttribute('aria-valuetext', `${status}，航程完成 ${percent}`);
   $('progress-caption').textContent = { upcoming: '航班等待起飞', active: '沿着航线，慢慢靠近', ended: '航迹已完整点亮' }[value.phase];
   if (pipWindow && !pipWindow.closed) renderPip(value);
@@ -437,20 +442,25 @@ function installScrollScene() {
   const root = document.documentElement;
   const story = $('main-content');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
-  let frame = 0, zoom = 0, zoomTarget = 0, previousPaint = performance.now(), touch = null;
+  let frame = 0, zoom = 0, zoomTarget = 0, scene = 0, previousPaint = performance.now(), touch = null, zoomReset = null;
   function paint(now = performance.now()) {
     frame = 0;
     const delta = Math.min(.1, (now - previousPaint) / 1000); previousPaint = now;
     if (document.body.classList.contains('focus-mode') || scrollY > 1) zoomTarget = 0;
-    zoom = motion.matches ? zoomTarget : zoom + (zoomTarget - zoom) * (1 - Math.exp(-delta * 14));
-    if (Math.abs(zoom - zoomTarget) < .0005) zoom = zoomTarget;
+    if (zoomReset) {
+      const t = motion.matches ? 1 : Math.min(1, (now - zoomReset.started) / VIEW_RESET_DURATION);
+      zoom = zoomReset.from * (1 - easeViewReset(t));
+      if (t === 1) zoomReset = null;
+    } else zoom = motion.matches ? zoomTarget : dampProgress(zoom, zoomTarget, delta, 14);
+    if (!zoomReset && Math.abs(zoom - zoomTarget) < .0005) zoom = zoomTarget;
     root.style.setProperty('--globe-zoom', zoom.toFixed(5));
     globe3d?.setZoom(zoom);
     const rect = story.getBoundingClientRect();
     const range = Math.max(1, story.offsetHeight - innerHeight);
     const progress = document.body.classList.contains('focus-mode') ? 1 : Math.min(1, Math.max(0, -rect.top / range));
     const eased = progress * progress * (3 - 2 * progress);
-    const p = motion.matches ? (progress >= .5 ? 1 : 0) : eased;
+    scene = motion.matches ? (progress >= .5 ? 1 : 0) : dampProgress(scene, eased, delta);
+    const p = scene;
     root.style.setProperty('--scene-progress', p.toFixed(5));
     globe3d?.setScroll(p);
     $('globe-reset').tabIndex = p < .12 ? 0 : -1;
@@ -460,14 +470,19 @@ function installScrollScene() {
     const fit = Math.min(1, (innerWidth - (innerWidth < 520 ? 32 : 80)) / Math.max(digits.scrollWidth, 1));
     root.style.setProperty('--clock-fit', fit.toFixed(5));
     $('scroll-cue').hidden = progress > .1 || document.body.classList.contains('focus-mode');
-    if (zoom !== zoomTarget) requestPaint();
+    if (zoom !== zoomTarget || zoomReset || !motion.matches && scene !== eased) requestPaint();
   }
-  function requestPaint() { if (!frame) frame = requestAnimationFrame(paint); }
+  function requestPaint() {
+    if (frame) return;
+    if (performance.now() - previousPaint > 100) previousPaint = performance.now() - 16;
+    frame = requestAnimationFrame(paint);
+  }
   const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select');
   addEventListener('wheel', event => {
     if (event.ctrlKey || !canZoom(event.target) || scrollY > 1) return;
-    if (event.deltaY < 0 || zoomTarget > 0) {
+    if (event.deltaY < 0 || zoomTarget > 0 || zoomReset && zoom > 0) {
       event.preventDefault();
+      if (zoomReset) { zoomTarget = zoom; zoomReset = null; }
       const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? innerHeight : 1);
       zoomTarget = advanceZoom(zoomTarget, delta); requestPaint();
     }
@@ -481,14 +496,18 @@ function installScrollScene() {
     if (!touch.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 6) touch.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
     if (touch.axis !== 'y') return;
     touch.x = point.clientX; touch.y = point.clientY;
-    if (scrollY <= 1 && (dy > 0 || zoomTarget > 0)) {
+    if (scrollY <= 1 && (dy > 0 || zoomTarget > 0 || zoomReset && zoom > 0)) {
       event.preventDefault(); touch.controlled = true;
+      if (zoomReset) { zoomTarget = zoom; zoomReset = null; }
       zoomTarget = advanceZoom(zoomTarget, -dy * 2); requestPaint();
     } else if (touch.controlled) { event.preventDefault(); window.scrollBy(0, -dy); }
   }, { passive: false });
   addEventListener('touchend', () => { touch = null; }, { passive: true });
   addEventListener('touchcancel', () => { touch = null; }, { passive: true });
-  addEventListener('journey-view-reset', () => { zoomTarget = 0; requestPaint(); });
+  addEventListener('journey-view-reset', event => {
+    zoomReset = { from: zoom, started: event.detail?.started ?? performance.now() };
+    zoomTarget = 0; requestPaint();
+  });
   addEventListener('scroll', requestPaint, { passive: true });
   addEventListener('resize', requestPaint);
   addEventListener('pageshow', requestPaint);

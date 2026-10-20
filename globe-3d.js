@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, clampProgress, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js';
 
 const lightPalette = { ocean: '#e7eee3', land: '#b1c4a5', coast: '#a2b799', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#22352c', land: '#40563e', coast: '#456047', grid: '#455e48', route: '#a7bd91', future: '#596e57', halo: '#3a5944' };
@@ -191,7 +191,7 @@ export async function mountGlobe(container) {
     const delta = Math.min((now - lastFrame) / 1000 || .016, .1); lastFrame = now;
     const follow = 1 - Math.exp(-delta * 12);
     if (resetting) {
-      const t = motion.matches ? 1 : Math.min(1, (now - resetting.started) / 800);
+      const t = motion.matches ? 1 : Math.min(1, (now - resetting.started) / VIEW_RESET_DURATION);
       ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, t));
       if (t === 1) { resetting = null; touched = false; }
     } else {
@@ -243,7 +243,9 @@ export async function mountGlobe(container) {
     // Preserve the last rendered pose, including its subtle idle motion.
     ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, 0));
     targetYaw = homeYaw; targetPitch = homePitch; touched = true; idleMix = 0;
-    delete container.dataset.rotated; window.dispatchEvent(new Event('journey-view-reset')); invalidate();
+    delete container.dataset.rotated;
+    window.dispatchEvent(new CustomEvent('journey-view-reset', { detail: { started: resetting.started } }));
+    invalidate();
   }
   canvas.addEventListener('keydown', event => {
     if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(event.key)) return;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AIRCRAFT_RADIUS, ROUTE_RADIUS, advanceZoom, clampProgress, nearestAngle, resetPose, routePoint, routeTangent, spherePoint } from '../globe-math.js';
+import { AIRCRAFT_RADIUS, ROUTE_RADIUS, advanceZoom, clampProgress, dampProgress, easeViewReset, nearestAngle, percentageParts, resetPose, routePoint, routeTangent, spherePoint } from '../globe-math.js';
 
 const close = (actual, expected, epsilon = 1e-9) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} should equal ${expected}`);
 
@@ -24,6 +24,25 @@ test('reverse scrolling increases zoom and forward scrolling restores it within 
   assert.equal(advanceZoom(.9, -1000), 1);
   assert.equal(advanceZoom(.1, 1000), 0);
   assert.equal(advanceZoom(.5, 0), .5);
+});
+
+test('percentage rounds to five decimals and separates only the final three digits', () => {
+  assert.deepEqual(percentageParts(2.499526), { text: '2.49953', major: '2.49', minor: '953' });
+  assert.deepEqual(percentageParts(0), { text: '0.00000', major: '0.00', minor: '000' });
+  assert.deepEqual(percentageParts(100), { text: '100.00000', major: '100.00', minor: '000' });
+  assert.equal(percentageParts(99.999999).text, '100.00000');
+  assert.equal(percentageParts(-1).text, '0.00000');
+});
+
+test('scroll damping converges without overshoot and behaves the same at different frame rates', () => {
+  const follow = fps => { let current = 0; for(let i=0;i<fps/2;i++) current=dampProgress(current,1,1/fps); return current; };
+  close(follow(30),follow(60));close(follow(60),follow(120));
+  assert.ok(follow(60)>.98 && follow(60)<1);
+  let current = .9;
+  for(let i=0;i<120;i++) {const next=dampProgress(current,0,1/60);assert.ok(next<=current && next>=0);current=next;}
+  assert.equal(current,0);
+  close(easeViewReset(0),0);close(easeViewReset(1),1);
+  close(easeViewReset(.3),1-easeViewReset(.7));
 });
 
 test('reset takes at most half a turn even after many rotations in either direction', () => {

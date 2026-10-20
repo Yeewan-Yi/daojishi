@@ -7,6 +7,22 @@ export function spherePoint(longitude, latitude, radius = 1) {
 
 export const ROUTE_RADIUS = 1.012;
 export const AIRCRAFT_RADIUS = 1.065;
+export const VIEW_RESET_DURATION = 800;
+
+export function easeViewReset(progress) {
+  const t = clampProgress(progress);
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+export function dampProgress(current, target, delta, rate = 9) {
+  const next = current + (target - current) * (1 - Math.exp(-Math.max(0, delta) * rate));
+  return Math.abs(next - target) < .0001 ? target : next;
+}
+
+export function percentageParts(progress) {
+  const text = (clampProgress(progress / 100) * 100).toFixed(5);
+  return { text, major: text.slice(0, -3), minor: text.slice(-3) };
+}
 
 // Keep the ground track close to the surface, independently of aircraft altitude.
 export function routePoint(progress, radius = ROUTE_RADIUS) {
@@ -27,7 +43,7 @@ export function nearestAngle(angle, reference) {
 export function resetPose(fromYaw, fromPitch, homeYaw, homePitch, progress) {
   const t = clampProgress(progress);
   if (t === 1) return { yaw: homeYaw, pitch: homePitch };
-  const eased = t * t * t * (t * (t * 6 - 15) + 10);
+  const eased = easeViewReset(t);
   const startYaw = nearestAngle(fromYaw, homeYaw);
   return { yaw: startYaw + (homeYaw - startYaw) * eased, pitch: fromPitch + (homePitch - fromPitch) * eased };
 }

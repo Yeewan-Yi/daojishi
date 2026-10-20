@@ -55,9 +55,9 @@ export function mountFlight(container, prefix) {
   return {
     update(value, countdown) {
       const point = flightPosition(value.progress), stage = flightStage(value.phase, point.progress);
-      const percent = point.progress.toFixed(3);
+      const percent = point.progress.toFixed(5);
       container.dataset.phase = value.phase;
-      svg.setAttribute('aria-label', `${stage.status}，航程已完成 ${percent}%，剩余 ${(100 - point.progress).toFixed(3)}%`);
+      svg.setAttribute('aria-label', `${stage.status}，航程已完成 ${percent}%，剩余 ${(100 - point.progress).toFixed(5)}%`);
       find('trail').setAttribute('stroke-dasharray', `${point.progress} 100`);
       find('plane').setAttribute('transform', `translate(${point.x.toFixed(3)} ${point.y.toFixed(3)}) rotate(${point.heading.toFixed(3)})`);
       find('position-label').setAttribute('transform', `translate(${point.x.toFixed(3)} ${(point.y - 42).toFixed(3)})`);
