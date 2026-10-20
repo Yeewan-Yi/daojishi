@@ -1,6 +1,7 @@
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeShare, decodeShare, toLocalInput } from './countdown.js';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js';
+import { mountFlipClock } from './flip-clock.js';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -30,6 +31,7 @@ let pendingRoom = null;
 let editingVersion = null;
 let invalidRoomLink = false;
 const mainFlight = mountFlight($('flight-visual'), 'main');
+const flipClock = mountFlipClock($('digits'));
 let pipFlight = null;
 
 function rememberRoom() {
@@ -43,7 +45,7 @@ function cacheCloud() {
 
 function setEditAccess() {
   const disabled = invalidRoomLink || !!room && (!cloudRecord || !cloudRecord.canEdit);
-  for (const id of ['edit-button', 'bottom-edit', 'start-edit', 'end-edit']) {
+  for (const id of ['edit-button']) {
     $(id).disabled = disabled;
     $(id).title = disabled ? cloudRecord ? '当前链接仅可查看' : '等待从云端读取编辑权限' : '';
   }
@@ -104,7 +106,7 @@ function readLocal() {
 function setSaveLabel() {
   $('save-label').textContent = invalidRoomLink ? '共享链接不完整或格式无效' : room ? {
     loading: '正在连接共享倒计时…',
-    synced: cloudRecord?.canEdit ? '云端已同步 · 可共同编辑' : '云端已同步 · 仅查看',
+    synced: cloudRecord?.canEdit ? '已同步 · 可编辑' : '已同步 · 仅查看',
     saving: '正在保存到云端…',
     offline: cloudCache ? '暂时离线 · 当前显示上次同步内容' : '无法连接云端 · 请检查网络',
     setup: '云端尚未初始化 · 需运行初始化 SQL',
@@ -181,13 +183,13 @@ function renderMetadata() {
   $('start-time').textContent = `${weekdayFormat.format(new Date(state.start))} · ${timeFormat.format(new Date(state.start))}`;
   $('end-time').textContent = `${weekdayFormat.format(new Date(state.end))} · ${timeFormat.format(new Date(state.end))}`;
   $('timezone-caption').textContent = `${zone} · 本地时区`;
-  $('edit-timezone').textContent = `按你的设备时区 ${zone} 输入，分享后会换算为对方的当地时间。`;
+  $('edit-timezone').textContent = `时区：${zone}`;
   renderTime();
 }
 
 function renderTime() {
   if (invalidRoomLink || room && !cloudCache) {
-    for (const part of ['days', 'hours', 'minutes', 'seconds']) $(part).textContent = '—';
+    flipClock.update({}, false);
     $('status-label').textContent = !invalidRoomLink && cloudStatus === 'loading' ? '连接中' : '未连接';
     $('event-kicker').textContent = '共享同一份期待';
     $('target-caption').textContent = invalidRoomLink ? '请向分享者索取完整的共享链接' : cloudStatus === 'setup' ? '请先完成云端数据库初始化' : cloudStatus === 'denied' ? '请向分享者索取有效链接' : '连接成功后显示最新标题与时间';
@@ -196,8 +198,7 @@ function renderTime() {
     return;
   }
   const value = getCountdown(state);
-  for (const part of ['days', 'hours', 'minutes', 'seconds']) $(part).textContent = pad(value[part]);
-  $('days').classList.toggle('long-number', value.days >= 1000);
+  flipClock.update(value);
   mainFlight.update(value, state);
   const status = flightStage(value.phase, value.progress).status;
   $('status-label').textContent = status;
@@ -211,7 +212,6 @@ function renderTime() {
   $('progress-track').setAttribute('aria-valuenow', value.progress.toFixed(1));
   $('progress-track').setAttribute('aria-valuetext', `${status}，航程完成 ${percent}`);
   $('progress-caption').textContent = { upcoming: '航班等待起飞', active: '沿着航线，慢慢靠近', ended: '航迹已完整点亮' }[value.phase];
-  $('today').textContent = `${dateFormat.format(new Date())} / ${weekdayFormat.format(new Date())}`;
   if (pipWindow && !pipWindow.closed) renderPip(value);
 }
 
@@ -234,9 +234,7 @@ function openEdit(field = 'title-input') {
   $(field).focus();
 }
 
-for (const id of ['edit-button', 'bottom-edit']) $(id).addEventListener('click', () => openEdit());
-$('start-edit').addEventListener('click', () => openEdit('start-input'));
-$('end-edit').addEventListener('click', () => openEdit('end-input'));
+$('edit-button').addEventListener('click', () => openEdit());
 
 $('edit-form').addEventListener('submit', async event => {
   event.preventDefault();
@@ -391,7 +389,7 @@ $('float-button').addEventListener('click', async () => {
     doc.title = '有期 · 悬浮倒计时';
     doc.documentElement.lang = 'zh-CN';
     doc.documentElement.dataset.theme = document.documentElement.dataset.theme;
-    for (const file of ['styles.css', 'flight.css']) {
+    for (const file of ['styles.css', 'flight.css', 'refined.css']) {
       const link = doc.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(file, document.baseURI).href;
       doc.head.append(link);
     }

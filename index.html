@@ -9,6 +9,7 @@
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./flight.css">
+  <link rel="stylesheet" href="./refined.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
@@ -29,24 +30,20 @@
 
   <div class="app-shell">
     <header class="header">
-      <a class="brand" href="./" aria-label="有期首页"><span class="brand-mark"><svg><use href="#i-clock"/></svg></span><span>有期<span class="brand-en">YŌUQĪ</span></span></a>
-      <span class="header-note">让期待有个刻度</span>
+      <a class="brand" href="./" aria-label="有期首页"><span class="brand-mark"><svg><use href="#i-clock"/></svg></span><span>有期</span></a>
       <div class="header-actions">
         <button class="icon-button" id="theme-button" aria-label="切换深色模式" title="切换深色模式"><svg><use href="#i-moon"/></svg></button>
-        <span class="header-divider"></span>
-        <button class="button button-quiet" id="share-button"><svg><use href="#i-share"/></svg><span>分享倒计时</span></button>
+        <button class="icon-button" id="focus-button" aria-label="进入专注模式" title="专注模式"><svg><use href="#i-expand"/></svg></button>
+        <button class="button button-quiet" id="edit-button"><svg><use href="#i-edit"/></svg><span>编辑</span></button>
+        <button class="button button-quiet" id="share-button"><svg><use href="#i-share"/></svg><span>分享</span></button>
       </div>
     </header>
 
     <main id="main-content">
-      <div class="journey-intro"><span class="eyebrow"><span class="tiny-line"></span> A LITTLE CLOSER, EVERY SECOND</span><span class="today" id="today"></span></div>
-
       <section class="journey-stage" aria-label="倒计时" id="countdown-card">
-        <div class="card-top"><span class="status-badge"><span class="status-dot"></span><span id="status-label">进行中</span></span><div class="card-tools"><button class="icon-button" id="focus-button" aria-label="进入专注模式" title="专注模式"><svg><use href="#i-expand"/></svg></button><button class="icon-button" id="edit-button" aria-label="编辑倒计时" title="编辑倒计时"><svg><use href="#i-edit"/></svg></button></div></div>
-        <div class="event-heading"><p class="event-kicker" id="event-kicker">沿着时间，飞向期待</p><h1 id="event-title">下一次见面</h1><p id="target-caption" class="target-caption"></p></div>
+        <div class="event-heading"><div class="journey-status"><span class="status-dot"></span><span id="status-label">飞行中</span></div><p class="sr-only" id="event-kicker">沿着时间，飞向期待</p><h1 id="event-title">下一次见面</h1><p id="target-caption" class="sr-only"></p></div>
         <div class="flight-visual" id="flight-visual"></div>
-        <div class="flight-caption-row"><span>每一段航迹，都是走过的时间</span><div class="flight-legend" aria-label="实线表示已飞行，虚线表示剩余航程"><span><i class="legend-past" aria-hidden="true"></i>已飞行</span><span><i class="legend-future" aria-hidden="true"></i>剩余航程</span></div></div>
-        <div class="progress-section"><div class="progress-copy"><span id="progress-caption">沿着航线，慢慢靠近</span><span id="progress-value">等待航程</span></div><div class="progress-track" role="progressbar" aria-label="飞行航程进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track"><div id="progress-bar"></div></div></div>
+        <div class="sr-only"><span id="progress-caption"></span><span id="progress-value"></span><div role="progressbar" aria-label="飞行航程进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track"><div id="progress-bar"></div></div></div>
         <p class="timer-caption" id="timer-caption">距离抵达</p>
         <div class="digits" role="timer" aria-live="off" aria-label="剩余时间" id="digits">
           <div class="digit-group"><span class="digit" id="days">00</span><span class="digit-label">天 <span>DAYS</span></span></div><span class="time-colon">:</span>
@@ -54,16 +51,15 @@
           <div class="digit-group"><span class="digit" id="minutes">00</span><span class="digit-label">分 <span>MINUTES</span></span></div><span class="time-colon">:</span>
           <div class="digit-group seconds-group"><span class="digit" id="seconds">00</span><span class="digit-label">秒 <span>SECONDS</span></span></div>
         </div>
-        <div class="card-bottom"><span><svg><use href="#i-clock"/></svg><span id="timezone-caption"></span></span><button class="text-button" id="float-button"><svg><use href="#i-window"/></svg><span>悬浮小窗</span><span aria-hidden="true">↗</span></button></div>
+        <span class="sr-only" id="timezone-caption"></span>
       </section>
 
       <section class="journey-dates" aria-label="起止时间">
-        <button class="date-point" id="start-edit"><span class="date-icon"><svg><use href="#i-calendar"/></svg></span><span class="date-content"><span class="date-label">故事的起点 <span>START</span></span><span class="date-value" id="start-date"></span><span class="date-time" id="start-time"></span></span></button>
-        <button class="date-point date-destination" id="end-edit"><span class="date-content"><span class="date-label">期待的日子 <span>DESTINATION</span></span><span class="date-value" id="end-date"></span><span class="date-time" id="end-time"></span></span><span class="date-icon"><span aria-hidden="true">✧</span></span></button>
+        <div class="date-point"><span class="date-content"><span class="date-label">故事的起点</span><span class="date-value" id="start-date"></span><span class="date-time" id="start-time"></span></span></div>
+        <div class="date-point"><span class="date-content"><span class="date-label">期待的日子</span><span class="date-value" id="end-date"></span><span class="date-time" id="end-time"></span></span></div>
       </section>
-      <div class="below-card"><div class="sync-status"><span class="save-status" id="save-status"><svg><use href="#i-check"/></svg><span id="save-label">已保存在此设备</span></span><button class="text-button" id="retry-sync" hidden>重试连接</button></div><button class="text-button" id="bottom-edit">修改标题与时间 <span aria-hidden="true">↗</span></button></div>
+      <div class="below-card"><div class="sync-status"><span class="save-status" id="save-status"><svg><use href="#i-check"/></svg><span id="save-label">已保存在此设备</span></span><button class="text-button" id="retry-sync" hidden>重试连接</button></div><button class="text-button" id="float-button"><svg><use href="#i-window"/></svg><span>悬浮小窗</span></button></div>
     </main>
-    <footer><span>有期 <span class="footer-dot">·</span> 把日子过成期待</span><span>慢慢来，好事在路上。<span class="footer-star">✳</span></span></footer>
   </div>
 
   <button class="button exit-focus" id="exit-focus" hidden><svg><use href="#i-close"/></svg>退出专注</button>
