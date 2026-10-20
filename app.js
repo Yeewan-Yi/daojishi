@@ -465,8 +465,6 @@ function installScrollScene() {
     root.style.setProperty('--scene-progress', p.toFixed(5));
     globe3d?.setScroll(p);
     $('globe-reset').tabIndex = p < .12 ? 0 : -1;
-    $('globe-enter').tabIndex = p < .12 ? 0 : -1;
-    $('globe-enter').disabled = zoomTarget >= .999;
     document.querySelector('.globe-tools').inert = p >= .12;
     document.querySelector('.globe-tools').style.pointerEvents = p < .12 ? 'auto' : 'none';
     const digits = $('digits');
@@ -519,7 +517,6 @@ function installScrollScene() {
     zoomReset = { from: zoom, started: event.detail?.started ?? performance.now() };
     zoomTarget = 0; requestPaint();
   });
-  $('globe-enter').addEventListener('click', () => { if (!globe3d) return; window.scrollTo({top:0,behavior:'instant'}); zoomReset = null; zoomTarget = 1; requestPaint(); });
   addEventListener('keydown', event => { if (event.key === 'Escape' && !document.querySelector('dialog[open]') && zoomTarget > .2) globe3d?.reset(); });
   addEventListener('scroll', requestPaint, { passive: true });
   addEventListener('resize', requestPaint);
