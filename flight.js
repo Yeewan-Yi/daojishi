@@ -77,11 +77,12 @@ export function mountFlight(container, prefix) {
 
 export function earthMarkup(prefix = 'ambient', embedded = false) {
   const markup = `<svg class="earth-background-svg" viewBox="0 100 800 650" aria-hidden="true">
-    <defs><radialGradient id="ambient-earth"><stop stop-color="var(--earth-glow)"/><stop offset="1" stop-color="var(--earth-base)"/></radialGradient><clipPath id="ambient-clip"><circle cx="400" cy="370" r="230"/></clipPath></defs>
+    <defs><radialGradient id="ambient-earth"><stop stop-color="var(--earth-glow)"/><stop offset="1" stop-color="var(--earth-base)"/></radialGradient><clipPath id="ambient-clip"><circle cx="400" cy="370" r="230"/></clipPath><linearGradient id="ambient-soften" gradientUnits="userSpaceOnUse" x1="0" y1="140" x2="0" y2="600"><stop stop-color="white"/><stop offset=".35" stop-color="white"/><stop offset=".67" stop-color="white" stop-opacity=".16"/><stop offset=".9" stop-color="white" stop-opacity="0"/></linearGradient><mask id="ambient-blend" maskUnits="userSpaceOnUse" x="0" y="0" width="800" height="660"><rect width="800" height="660" fill="url(#ambient-soften)"/></mask></defs>
+    <g class="earth-sphere" mask="url(#ambient-blend)" transform="translate(400 370) scale(1.08) translate(-400 -370)">
     <circle cx="400" cy="370" r="240" class="ambient-atmosphere"/>
     <circle cx="400" cy="370" r="230" fill="url(#ambient-earth)"/>
     <g clip-path="url(#ambient-clip)">
-      <g class="earth-land" transform="translate(0 -91) scale(1 1.65)" aria-hidden="true">
+      <g class="earth-land" aria-hidden="true">
         <path d="M185 217 208 196 222 199 238 181 256 179 268 165 293 163 306 175 303 190 321 193 333 207 326 223 309 226 301 241 286 241 277 252 263 249 254 265 239 265 236 246 215 244 207 232 187 233Z"/>
         <path d="M269 272 289 266 302 279 320 284 322 302 334 317 326 333 316 336 312 356 296 378 288 359 286 338 273 323 277 303 265 288Z"/>
         <path d="M354 160 375 150 390 155 398 170 387 182 370 180Z"/>
@@ -93,6 +94,7 @@ export function earthMarkup(prefix = 'ambient', embedded = false) {
 
       <g class="earth-grid"><path d="M170 370H630M182 442Q400 482 618 442M205 493Q400 550 595 493M400 140V600"/></g>
     </g>
-  </svg>`.replaceAll('ambient-earth', `${prefix}-earth`).replaceAll('ambient-clip', `${prefix}-clip`);
+    </g>
+  </svg>`.replaceAll('ambient-earth', `${prefix}-earth`).replaceAll('ambient-clip', `${prefix}-clip`).replaceAll('ambient-soften', `${prefix}-soften`).replaceAll('ambient-blend', `${prefix}-blend`);
   return embedded ? markup.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '') : markup;
 }
