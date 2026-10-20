@@ -18,6 +18,20 @@ export function advanceZoom(current, wheelDelta) {
   return clampProgress(current - wheelDelta / 650);
 }
 
+export function nearestAngle(angle, reference) {
+  const turn = Math.PI * 2;
+  return reference + ((angle - reference + Math.PI) % turn + turn) % turn - Math.PI;
+}
+
+// Equivalent orientations use the closest revolution; ease in and out without overshoot.
+export function resetPose(fromYaw, fromPitch, homeYaw, homePitch, progress) {
+  const t = clampProgress(progress);
+  if (t === 1) return { yaw: homeYaw, pitch: homePitch };
+  const eased = t * t * t * (t * (t * 6 - 15) + 10);
+  const startYaw = nearestAngle(fromYaw, homeYaw);
+  return { yaw: startYaw + (homeYaw - startYaw) * eased, pitch: fromPitch + (homePitch - fromPitch) * eased };
+}
+
 export function routeTangent(progress) {
   const angle = clampProgress(progress) * Math.PI;
   return [Math.sin(angle), Math.cos(angle), 0];

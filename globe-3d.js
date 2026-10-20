@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, clampProgress, spherePoint, routePoint, routeTangent } from './globe-math.js';
+import { AIRCRAFT_RADIUS, clampProgress, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js';
 
 const lightPalette = { ocean: '#e7eee3', land: '#b1c4a5', coast: '#a2b799', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#22352c', land: '#40563e', coast: '#456047', grid: '#455e48', route: '#a7bd91', future: '#596e57', halo: '#3a5944' };
@@ -151,6 +151,7 @@ export async function mountGlobe(container) {
   let themeMix = initialTheme, themeFrom = initialTheme, themeTarget = initialTheme, themeStarted = 0;
   let progress = 0, phase = 'pending', scroll = 0, targetYaw = homeYaw, targetPitch = homePitch, yaw = homeYaw, pitch = homePitch;
   let drag = null, touched = false, dragging = false, zoomChanging = false, cameraZoom = 0, frame = 0, lastFrame = 0, visible = !document.hidden;
+  let resetting = null, idleMix = 0;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   function theme() {
     themeFrom = themeMix;
@@ -185,18 +186,25 @@ export async function mountGlobe(container) {
     frame = 0;
     if (!visible || canvas.dataset.contextLost === 'true') return;
     const themeMoving = updateTheme(now);
-    const settled = Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) < .0002;
+    const settled = !resetting && Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) < .0002;
     if (!dragging && !zoomChanging && settled && !themeMoving && !motion.matches && now - lastFrame < 32) { frame = requestAnimationFrame(draw); return; }
     const delta = Math.min((now - lastFrame) / 1000 || .016, .1); lastFrame = now;
     const follow = 1 - Math.exp(-delta * 12);
-    yaw = motion.matches ? targetYaw : yaw + (targetYaw - yaw) * follow;
-    pitch = motion.matches ? targetPitch : pitch + (targetPitch - pitch) * follow;
+    if (resetting) {
+      const t = motion.matches ? 1 : Math.min(1, (now - resetting.started) / 800);
+      ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, t));
+      if (t === 1) { resetting = null; touched = false; }
+    } else {
+      yaw = motion.matches ? targetYaw : yaw + (targetYaw - yaw) * follow;
+      pitch = motion.matches ? targetPitch : pitch + (targetPitch - pitch) * follow;
+    }
     const idle = !touched && !motion.matches && scroll < .9;
-    world.rotation.set(pitch + (idle ? Math.sin(now / 19000) * .012 : 0), yaw + (idle ? Math.sin(now / 23000) * .026 : 0), -.07);
+    idleMix = motion.matches ? 0 : idleMix + ((idle ? 1 : 0) - idleMix) * follow;
+    world.rotation.set(pitch + Math.sin(now / 19000) * .012 * idleMix, yaw + Math.sin(now / 23000) * .026 * idleMix, -.07);
     renderer.render(scene, camera);
     zoomChanging = false;
     const moving = Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) > .0002;
-    if (((idle || moving || dragging) && scroll < .98) || themeMoving) frame = requestAnimationFrame(draw);
+    if (((idle || moving || dragging || resetting || idleMix > .0002) && scroll < .98) || themeMoving) frame = requestAnimationFrame(draw);
   }
   function invalidate() { if (!frame && visible) frame = requestAnimationFrame(draw); }
   function resize() {
@@ -208,6 +216,7 @@ export async function mountGlobe(container) {
   }
   canvas.addEventListener('pointerdown', event => {
     if (scroll > .5 || event.button && event.pointerType === 'mouse') return;
+    interruptReset();
     canvas.classList.add('is-pointer-focus');
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, yaw: targetYaw, pitch: targetPitch, touch: event.pointerType !== 'mouse' };
     dragging = false; canvas.setPointerCapture(event.pointerId);
@@ -224,11 +233,24 @@ export async function mountGlobe(container) {
   });
   function stopDrag() { drag = null; dragging = false; canvas.classList.remove('is-dragging'); }
   canvas.addEventListener('pointerup', stopDrag); canvas.addEventListener('pointercancel', stopDrag); canvas.addEventListener('lostpointercapture', stopDrag);
-  function reset() { targetYaw = homeYaw; targetPitch = homePitch; touched = false; delete container.dataset.rotated; window.dispatchEvent(new Event('journey-view-reset')); invalidate(); }
+  function interruptReset() {
+    if (!resetting) return;
+    resetting = null; targetYaw = yaw; targetPitch = pitch; touched = true;
+  }
+  function reset() {
+    stopDrag();
+    resetting = { yaw: world.rotation.y, pitch: world.rotation.x, started: performance.now() };
+    // Preserve the last rendered pose, including its subtle idle motion.
+    ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, 0));
+    targetYaw = homeYaw; targetPitch = homePitch; touched = true; idleMix = 0;
+    delete container.dataset.rotated; window.dispatchEvent(new Event('journey-view-reset')); invalidate();
+  }
   canvas.addEventListener('keydown', event => {
     if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(event.key)) return;
     canvas.classList.remove('is-pointer-focus');
-    event.preventDefault(); touched = true;
+    event.preventDefault();
+    if (event.key !== 'Home') interruptReset();
+    touched = true;
     if (event.key === 'Home') reset();
     else if (event.key === 'ArrowLeft') targetYaw -= .18;
     else if (event.key === 'ArrowRight') targetYaw += .18;
@@ -247,7 +269,7 @@ export async function mountGlobe(container) {
   return {
     update(value) { progress = clampProgress(value.progress / 100); phase = value.phase; positionPlane(); invalidate(); },
     pending() { phase = 'pending'; positionPlane(); invalidate(); },
-    setZoom(value) { const next = clampProgress(value); zoomChanging ||= Math.abs(next - cameraZoom) > .00001; cameraZoom = next; camera.position.z = 4.4 - cameraZoom * .9; invalidate(); },
+    setZoom(value) { const next = clampProgress(value); zoomChanging ||= Math.abs(next - cameraZoom) > .00001; cameraZoom = next; camera.position.z = 4.4 - cameraZoom * 1.08; invalidate(); },
     setScroll(value) {
       scroll = value; canvas.tabIndex = scroll < .5 ? 0 : -1;
       container.dataset.interactive = scroll < .5 ? 'true' : 'false';

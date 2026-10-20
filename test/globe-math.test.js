@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AIRCRAFT_RADIUS, ROUTE_RADIUS, advanceZoom, clampProgress, routePoint, routeTangent, spherePoint } from '../globe-math.js';
+import { AIRCRAFT_RADIUS, ROUTE_RADIUS, advanceZoom, clampProgress, nearestAngle, resetPose, routePoint, routeTangent, spherePoint } from '../globe-math.js';
 
 const close = (actual, expected, epsilon = 1e-9) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} should equal ${expected}`);
 
@@ -24,6 +24,37 @@ test('reverse scrolling increases zoom and forward scrolling restores it within 
   assert.equal(advanceZoom(.9, -1000), 1);
   assert.equal(advanceZoom(.1, 1000), 0);
   assert.equal(advanceZoom(.5, 0), .5);
+});
+
+test('reset takes at most half a turn even after many rotations in either direction', () => {
+  const home = .32;
+  for (const turns of [-100, -7, -1, 0, 1, 9, 100]) for (const offset of [-3.13, -.8, 0, .8, 3.13]) {
+    const actual = home + turns * Math.PI * 2 + offset;
+    const closest = nearestAngle(actual, home);
+    close(closest, home + offset);
+    close(Math.cos(actual), Math.cos(closest));
+    close(Math.sin(actual), Math.sin(closest));
+    assert.ok(Math.abs(closest - home) <= Math.PI);
+    assert.deepEqual(resetPose(actual, -.6, home, .12, 1), { yaw: home, pitch: .12 });
+  }
+});
+
+test('reset eases away and settles without overshoot, and can restart from its visible pose', () => {
+  const from = .32 + 12 * Math.PI + 2;
+  let previous = Infinity;
+  for (let step = 0; step <= 100; step++) {
+    const pose = resetPose(from, -.6, .32, .12, step / 100);
+    const distance = Math.abs(pose.yaw - .32);
+    assert.ok(distance <= previous + 1e-9);
+    assert.ok(pose.yaw >= .32 && pose.yaw <= 2.32 + 1e-9);
+    assert.ok(pose.pitch >= -.6 && pose.pitch <= .12);
+    previous = distance;
+  }
+  assert.ok(2.32 - resetPose(from, -.6, .32, .12, .01).yaw < .0001);
+  assert.ok(resetPose(from, -.6, .32, .12, .99).yaw - .32 < .0001);
+  const visible = resetPose(from, -.6, .32, .12, .4);
+  const restart = resetPose(visible.yaw, visible.pitch, .32, .12, 0);
+  close(restart.yaw, visible.yaw); close(restart.pitch, visible.pitch);
 });
 
 test('the aircraft heading follows the route and is perpendicular to the surface normal', () => {

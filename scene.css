@@ -19,7 +19,7 @@ body.focus-mode main.scroll-story{height:100svh}body.focus-mode .app-shell{paddi
 .globe-3d>.flight-svg{display:none}.globe-canvas{display:block;width:100%;height:100%;touch-action:pan-y pinch-zoom;cursor:grab;mask-image:linear-gradient(to bottom,transparent,#000 10%,#000 42%,transparent 82%);outline:none}
 .globe-canvas.is-dragging{cursor:grabbing}.globe-canvas:focus-visible:not(.is-pointer-focus){outline:1px dashed var(--accent);outline-offset:-25px;border-radius:50%}
 .globe-tools{display:none;position:absolute;z-index:3;left:50%;top:calc(67svh - var(--scene-progress)*16svh);transform:translateX(-50%);align-items:center;gap:8px;color:var(--subtle);font-size:10px;letter-spacing:1px;opacity:clamp(0,calc(1 - var(--scene-progress)*8),1)}
-.has-globe-3d .globe-tools{display:flex}.globe-tools .icon-button{width:28px;height:28px}.globe-tools svg{width:14px;height:14px}
+.has-globe-3d .globe-tools{display:flex}.globe-tools .icon-button{width:auto;min-width:76px;height:36px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 12px;font-size:12px;font-weight:400;letter-spacing:.5px;color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 24%,transparent);background:color-mix(in srgb,var(--bg) 65%,transparent);border-radius:6px;opacity:.85}.globe-tools .icon-button:hover,.globe-tools .icon-button:focus-visible{opacity:1;background:color-mix(in srgb,var(--accent) 10%,var(--bg));border-color:color-mix(in srgb,var(--accent) 48%,transparent)}.globe-tools svg{width:16px;height:16px}
 .journey-progress-line{position:absolute;left:50%;top:calc(100% + 17px);transform:translateX(-50%);width:min(280px,62vw);height:3px;background:color-mix(in srgb,var(--accent) 18%,transparent);border-radius:4px;opacity:clamp(0,calc(var(--scene-progress)*2.5),1)}
 .journey-progress-line>span{position:relative;display:block;width:0;height:100%;border-radius:inherit;background:var(--accent-strong);transition:width 1s linear}
 .journey-progress-line>span:after{content:'';position:absolute;left:100%;top:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:var(--accent-strong);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
@@ -30,7 +30,7 @@ body.focus-mode .globe-tools{display:none}
 /* At the start of the story, an extra reverse scroll inspects the globe. */
 :root{--globe-zoom:0}
 html{overscroll-behavior-y:none}
-.journey-stage .flight-visual:not(.globe-3d){transform:translate(-50%,-50%) scale(calc(1 + var(--scene-progress)*1.3 + var(--globe-zoom)*.4))}
+.journey-stage .flight-visual:not(.globe-3d){transform:translate(-50%,-50%) scale(calc(1 + var(--scene-progress)*1.3 + var(--globe-zoom)*.48))}
 .journey-stage .flight-visual.globe-3d{top:calc(60svh - var(--scene-progress)*13svh + var(--globe-zoom)*4svh)}
 .countdown-reading{opacity:calc(1 - var(--globe-zoom)*.45)}
 .journey-percent{width:min(calc(190px + var(--scene-progress)*450px),calc(100% - 48px));height:calc(86px - var(--scene-progress)*14px);justify-content:center;gap:6px;isolation:isolate}
