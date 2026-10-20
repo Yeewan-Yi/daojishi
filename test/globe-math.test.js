@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AIRCRAFT_RADIUS, ROUTE_RADIUS, advanceZoom, clampProgress, dampProgress, easeViewReset, nearestAngle, percentageParts, resetPose, routePoint, routeTangent, spherePoint } from '../globe-math.js';
+import { Euler, PerspectiveCamera, Vector3 } from '../vendor/three.module.js';
+import { AIRCRAFT_RADIUS, ROUTE_RADIUS, SURVEY_TICK_RADIUS, SURVEY_TILT, advanceZoom, advanceExploration, aircraftBeacon, clampProgress, dampProgress, easeViewReset, explorationCameraDistance, explorationProgress, nearestAngle, percentageParts, resetPose, routePoint, routeTangent, spherePoint, useAircraftLabel } from '../globe-math.js';
 
 const close = (actual, expected, epsilon = 1e-9) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} should equal ${expected}`);
 
@@ -24,6 +25,52 @@ test('reverse scrolling increases zoom and forward scrolling restores it within 
   assert.equal(advanceZoom(.9, -1000), 1);
   assert.equal(advanceZoom(.1, 1000), 0);
   assert.equal(advanceZoom(.5, 0), .5);
+});
+
+test('an accidental large wheel event cannot enter immersion, but deliberate sustained input can', () => {
+  const flick = advanceExploration(0,-2000,40);
+  assert.ok(flick < .24); assert.equal(explorationProgress(flick),0);
+  let deliberate = 0;
+  for(let i=0;i<7;i++) deliberate=advanceExploration(deliberate,-120,40);
+  assert.equal(deliberate,1);assert.equal(explorationProgress(deliberate),1);
+  let trackpad=0;
+  for(let i=0;i<100;i++)trackpad=advanceExploration(trackpad,-20,10);
+  assert.equal(trackpad,1);
+  assert.ok(advanceExploration(.5,120,40)<.5);
+  assert.equal(advanceExploration(0,1000,40),0);
+  assert.equal(explorationProgress(.24),0);
+  assert.equal(explorationProgress(.9),1);
+});
+
+test('surface progress switches before the limb and uses hysteresis to avoid flicker', () => {
+  assert.equal(useAircraftLabel(.9,false),false);
+  assert.equal(useAircraftLabel(.47,false),true);
+  assert.equal(useAircraftLabel(.6,true),true);
+  assert.equal(useAircraftLabel(.67,true),false);
+  assert.equal(useAircraftLabel(-.5,false),true);
+  assert.equal(useAircraftLabel(.9,false,false),true);
+});
+
+test('aircraft labels remain in view even when the aircraft passes behind the globe', () => {
+  const bounds={left:80,right:720,top:30,bottom:570},center={x:400,y:300};
+  for(const visible of [true,false])for(const point of [{x:-200,y:-900},{x:3000,y:1000},{x:400,y:300}]) {
+    const label=aircraftBeacon(point,center,240,visible,bounds);
+    assert.ok(label.x>=bounds.left && label.x<=bounds.right);
+    assert.ok(label.y>=bounds.top && label.y<=bounds.bottom);
+    assert.ok(Number.isFinite(label.x+label.y));
+  }
+});
+
+test('the complete outer survey scale fits within the canvas at every exploration zoom', () => {
+  const camera=new PerspectiveCamera(35,800/660,.1,30),tilt=new Euler(...SURVEY_TILT);
+  for(let step=0;step<=20;step++){
+    const zoom=step/20;
+    camera.position.set(0,.08,explorationCameraDistance(zoom));camera.lookAt(0,.02,0);camera.updateMatrixWorld();
+    for(let i=0;i<720;i++){
+      const a=i/720*Math.PI*2,p=new Vector3(Math.cos(a)*SURVEY_TICK_RADIUS,Math.sin(a)*SURVEY_TICK_RADIUS,0).applyEuler(tilt).project(camera);
+      assert.ok(Math.abs(p.x)<.98 && Math.abs(p.y)<.98,`scale clipped at zoom ${zoom}: ${p.x}, ${p.y}`);
+    }
+  }
 });
 
 test('percentage rounds to five decimals and separates only the final three digits', () => {

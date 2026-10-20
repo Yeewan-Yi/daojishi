@@ -8,6 +8,10 @@ export function spherePoint(longitude, latitude, radius = 1) {
 export const ROUTE_RADIUS = 1.012;
 export const AIRCRAFT_RADIUS = 1.065;
 export const VIEW_RESET_DURATION = 800;
+export const SURVEY_RADIUS = 1.085;
+export const SURVEY_TICK_RADIUS = 1.11;
+export const SURVEY_TILT = [.1, -.06, -.33];
+export const explorationCameraDistance = zoom => 4.4 - clampProgress(zoom) * .7;
 
 export function easeViewReset(progress) {
   const t = clampProgress(progress);
@@ -32,6 +36,32 @@ export function routePoint(progress, radius = ROUTE_RADIUS) {
 
 export function advanceZoom(current, wheelDelta) {
   return clampProgress(current - wheelDelta / 650);
+}
+
+export function advanceExploration(current, delta, elapsed = 40) {
+  const distance = Math.min(160, Math.abs(delta));
+  const interval = Math.max(8, Math.min(120, elapsed));
+  const limit = interval >= 32 ? .22 : interval / 1000 * (delta < 0 ? 1.8 : 2.4);
+  const step = Math.min(distance / (delta < 0 ? 550 + current * 450 : 500), limit);
+  return clampProgress(current + (delta < 0 ? step : -step));
+}
+
+export function explorationProgress(zoom) {
+  const t = clampProgress((zoom - .24) / .66);
+  return t * t * (3 - 2 * t);
+}
+
+export function useAircraftLabel(facing, previous, inside = true) {
+  return !inside || facing < (previous ? .66 : .48);
+}
+
+export function aircraftBeacon(point, center, radius, visible, bounds) {
+  let { x, y } = point;
+  if (!visible) {
+    const dx = x - center.x, dy = y - center.y, length = Math.hypot(dx, dy) || 1;
+    x = center.x + dx / length * radius; y = center.y + dy / length * radius;
+  }
+  return { x: Math.max(bounds.left, Math.min(bounds.right, x + 30)), y: Math.max(bounds.top, Math.min(bounds.bottom, y - 30)) };
 }
 
 export function nearestAngle(angle, reference) {
