@@ -1,9 +1,9 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js';
-import { mountSurfaceProgress } from './globe-labels.js';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261021-chuanshu';
+import { mountSurfaceProgress } from './globe-labels.js?v=20261021-chuanshu';
 
 const lightPalette = { ocean: '#e7eee3', land: '#b1c4a5', coast: '#a2b799', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
-const darkPalette = { ocean: '#22352c', land: '#40563e', coast: '#456047', grid: '#455e48', route: '#a7bd91', future: '#596e57', halo: '#3a5944' };
+const darkPalette = { ocean: '#30473f', land: '#637654', coast: '#819674', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
 const vector = values => new THREE.Vector3(...values);
 
 function earthTexture(data, palette) {
@@ -168,9 +168,15 @@ export async function mountGlobe(container) {
     for (const key of Object.keys(palette)) palette[key].copy(dayColors[key]).lerp(nightColors[key], themeMix);
     gridMaterial.color.copy(palette.grid); futureMaterial.color.copy(palette.future); trailMaterial.color.copy(palette.route); atmosphere.uniforms.glow.value.copy(palette.halo);
     markers.forEach(marker => marker.dot.material.color.copy(marker.progress <= progress ? palette.route : palette.future));
-    ambient.intensity = THREE.MathUtils.lerp(2, .8, themeMix);
-    sun.intensity = THREE.MathUtils.lerp(2.3, .9, themeMix); rim.intensity = THREE.MathUtils.lerp(1.1, .3, themeMix);
-    renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .8, themeMix);
+    ambient.intensity = THREE.MathUtils.lerp(2, .65, themeMix);
+    // A warm upper-left sun and a weaker cool rim reveal the night-side shape.
+    sun.intensity = THREE.MathUtils.lerp(2.3, 2.1, themeMix); rim.intensity = THREE.MathUtils.lerp(1.1, .52, themeMix);
+    sun.position.set(-3 - themeMix * .8, 4 - themeMix, 5 - themeMix * 1.4);
+    sun.color.set('#fff5df').lerp(new THREE.Color('#ecdfb9'),themeMix);
+    rim.position.set(3 + themeMix * .2, 1 - themeMix * .6, -2 + themeMix * .8);
+    atmosphere.uniforms.strength.value = .17 + themeMix * .04;
+    sphereMaterial.roughness = .95 - themeMix * .07;
+    renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .88, themeMix);
     return t < 1 && Math.abs(themeMix - themeTarget) > .0001;
   }
   function positionPlane() {

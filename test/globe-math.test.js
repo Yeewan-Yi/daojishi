@@ -75,12 +75,12 @@ test('simple zoom approaches continuously with a slightly larger bounded maximum
   for (let i=1;i<=100;i++) assert.ok(globeCameraDistance(i/100)<globeCameraDistance((i-1)/100));
 });
 
-test('percentage rounds to five decimals and separates only the final three digits', () => {
-  assert.deepEqual(percentageParts(2.499526), { text: '2.49953', major: '2.49', minor: '953' });
-  assert.deepEqual(percentageParts(0), { text: '0.00000', major: '0.00', minor: '000' });
-  assert.deepEqual(percentageParts(100), { text: '100.00000', major: '100.00', minor: '000' });
-  assert.equal(percentageParts(99.999999).text, '100.00000');
-  assert.equal(percentageParts(-1).text, '0.00000');
+test('percentage rounds to seven decimals and keeps the first two decimals full size', () => {
+  assert.deepEqual(percentageParts(2.49952618), { text: '2.4995262', major: '2.49', minor: '95262' });
+  assert.deepEqual(percentageParts(0), { text: '0.0000000', major: '0.00', minor: '00000' });
+  assert.deepEqual(percentageParts(100), { text: '100.0000000', major: '100.00', minor: '00000' });
+  assert.equal(percentageParts(99.99999999).text, '100.0000000');
+  assert.equal(percentageParts(-1).text, '0.0000000');
 });
 
 test('scroll damping converges without overshoot and behaves the same at different frame rates', () => {

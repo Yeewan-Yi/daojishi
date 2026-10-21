@@ -22,8 +22,8 @@ export function dampProgress(current, target, delta, rate = 9) {
 }
 
 export function percentageParts(progress) {
-  const text = (clampProgress(progress / 100) * 100).toFixed(5);
-  return { text, major: text.slice(0, -3), minor: text.slice(-3) };
+  const text = (clampProgress(progress / 100) * 100).toFixed(7);
+  return { text, major: text.slice(0, -5), minor: text.slice(-5) };
 }
 
 // Keep the ground track close to the surface, independently of aircraft altitude.

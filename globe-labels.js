@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { aircraftBeacon, percentageParts, spherePoint, useAircraftLabel } from './globe-math.js';
+import { aircraftBeacon, percentageParts, spherePoint, useAircraftLabel } from './globe-math.js?v=20261021-chuanshu';
 
 export function mountSurfaceProgress(world, container) {
   const longitude = -18.3, latitude = 20, width = 54, height = 18, columns = 48, rows = 16;

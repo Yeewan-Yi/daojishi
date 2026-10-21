@@ -3,7 +3,7 @@ import { CloudClient, roomUrl, validateRoom, newRoom } from './cloud.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const KEY = /^[0-9a-f]{64}$/;
 export function validateIdentity(value) {
-  if (!value || !UUID.test(value.id) || !KEY.test(value.token)) throw new Error('留言专属链接不完整，请使用自己的完整链接。');
+  if (!value || !UUID.test(value.id) || !KEY.test(value.token)) throw new Error('传书专属链接不完整，请使用自己的完整链接。');
   return {id:value.id, token:value.token};
 }
 export function identityFromHash(hash) {
@@ -18,7 +18,7 @@ export function personalUrl(base, room, identity) {
 }
 export function validateBody(body) {
   const value = String(body).replace(/\r\n?/g,'\n').trim();
-  if (!value || [...value].length > 500) throw new Error('写下 1—500 字的留言。');
+  if (!value || [...value].length > 500) throw new Error('写下 1—500 字的书信。');
   return value;
 }
 export function createPair(names) {
@@ -26,9 +26,9 @@ export function createPair(names) {
   return names.map(name => ({...newRoom(),name:name.trim()}));
 }
 export function parsePage(data) {
-  if (!data || !Number.isSafeInteger(data.revision) || data.revision < 0 || !Number.isSafeInteger(data.latest_other) || !Array.isArray(data.items) || data.items.length>20) throw new Error('留言读取失败，请重试。');
+  if (!data || !Number.isSafeInteger(data.revision) || data.revision < 0 || !Number.isSafeInteger(data.latest_other) || !Array.isArray(data.items) || data.items.length>20) throw new Error('书信读取失败，请重试。');
   for (const row of data.items) {
-    if (!UUID.test(row.id) || !UUID.test(row.author) || typeof row.name!=='string' || typeof row.body!=='string' || !row.body.trim() || [...row.body].length>500 || !Number.isSafeInteger(row.seq) || !Number.isSafeInteger(row.version) || row.version<1 || !Number.isFinite(Date.parse(row.created_at)) || !Number.isFinite(Date.parse(row.updated_at))) throw new Error('留言数据无效，请重试。');
+    if (!UUID.test(row.id) || !UUID.test(row.author) || typeof row.name!=='string' || typeof row.body!=='string' || !row.body.trim() || [...row.body].length>500 || !Number.isSafeInteger(row.seq) || !Number.isSafeInteger(row.version) || row.version<1 || !Number.isFinite(Date.parse(row.created_at)) || !Number.isFinite(Date.parse(row.updated_at))) throw new Error('书信数据无效，请重试。');
   }
   return data;
 }
@@ -38,7 +38,7 @@ export class LettersClient {
     validateRoom(room);
     try { return await this.cloud.rpc('youqi_letters',{p_id:room.id,p_token:room.token,p_action:action,p_payload:payload}); }
     catch(error) {
-      const messages={SETUP:'留言功能暂未连接，请稍后重试。',ACCESS:'这条链接没有留言权限，请使用自己的专属链接。',CONFLICT:'这条留言已在另一处更新，请重新打开后修改。',VALIDATION:'请检查称呼或留言内容。',SERVER:'暂时无法保存，请稍后重试；草稿已保留。'};
+      const messages={SETUP:'传书功能暂未连接，请稍后重试。',ACCESS:'这条链接没有传书权限，请使用自己的专属链接。',CONFLICT:'这封信已在另一处更新，请重新打开后修改。',VALIDATION:'请检查称呼或书信内容。',SERVER:'暂时无法保存，请稍后重试；草稿已保留。'};
       if(messages[error.code]) error.message=messages[error.code];
       throw error;
     }
@@ -47,5 +47,5 @@ export class LettersClient {
   status(room,identity) { return this.call(room,'status',identity ? validateIdentity(identity) : {}); }
   async list(room,identity,before=null) { return parsePage(await this.call(room,'list',{...validateIdentity(identity),before})); }
   write(room,identity,body,id=crypto.randomUUID(),version=null) { return this.call(room,'write',{...validateIdentity(identity),message_id:id,body:validateBody(body),version}); }
-  remove(room,identity,id,version) { if(!UUID.test(id)) throw new Error('留言不存在。'); return this.call(room,'delete',{...validateIdentity(identity),message_id:id,version}); }
+  remove(room,identity,id,version) { if(!UUID.test(id)) throw new Error('书信不存在。'); return this.call(room,'delete',{...validateIdentity(identity),message_id:id,version}); }
 }

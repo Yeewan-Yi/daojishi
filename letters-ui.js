@@ -1,4 +1,4 @@
-import { LettersClient, createPair, identityFromHash, personalUrl, validateIdentity } from './letters.js';
+import { LettersClient, createPair, identityFromHash, personalUrl, validateIdentity } from './letters.js?v=20261021-chuanshu';
 
 export function mountLetters({getContext,openSharing,notify,client=new LettersClient()}) {
   const $=id=>document.getElementById(id), dock=$('letters-dock'), panel=$('letters-panel'), trigger=$('letters-trigger');
@@ -78,11 +78,11 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   function markRead() {
     if(!identity || view!=='book')return;
     seen=Math.max(seen,latestOther);put(key('seen'),seen); $('letters-unread').hidden=true;
-    trigger.setAttribute('aria-label','留言');
+    trigger.setAttribute('aria-label','传书');
   }
   function unread() {
     const has=latestOther>seen;
-    $('letters-unread').hidden=!has;trigger.setAttribute('aria-label',has?'留言，有新留言':'留言');
+    $('letters-unread').hidden=!has;trigger.setAttribute('aria-label',has?'传书，有新来函':'传书');
   }
   function draftKey(){return key(edit?`edit.${edit.id}`:'draft');}
   function saveDraft(){put(draftKey(),input.value);}
@@ -93,8 +93,8 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
     saveDraft();edit=null;sendId=crypto.randomUUID();input.value=get(draftKey(),'');updateComposer();
   });
   function updateComposer(){
-    $('letter-send-label').textContent=edit?'保存修改':'留言';$('letter-cancel').hidden=!edit;
-    $('letter-composer-label').textContent=edit?'修改这条留言':`以 ${names} 的身份留言`;
+    $('letter-send-label').textContent=edit?'保存修改':'递函';$('letter-cancel').hidden=!edit;
+    $('letter-composer-label').textContent=edit?'修改这封信':`执笔 · ${names}`;
     $('letter-send').disabled=busy;input.disabled=busy;counter();
   }
   function render() {
@@ -117,7 +117,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
         remove.addEventListener('click',()=>{
           if(busy)return;
           actions.replaceChildren();
-          const prompt=document.createElement('span');prompt.textContent='删除这条留言？';
+          const prompt=document.createElement('span');prompt.textContent='删除这封信？';
           const yes=document.createElement('button');yes.textContent='确认删除';yes.type='button';
           const no=document.createElement('button');no.textContent='取消';no.type='button';
           no.addEventListener('click',render);
@@ -157,7 +157,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
       pendingPair=get(`youqi.letters.pending.${ctx.room.id}`);
       if(Array.isArray(pendingPair)&&pendingPair.length===2){$('letter-name-self').value=pendingPair[0].name||'';$('letter-name-other').value=pendingPair[1].name||'';}
       try{identity=explicit||validateIdentity(get(`youqi.letters.identity.${ctx.room.id}`));}catch{identity=null;}
-      if(invalidIdentity){setView('identity');error('留言专属链接不完整，请使用自己的完整链接。');return;}
+      if(invalidIdentity){setView('identity');error('传书专属链接不完整，请使用自己的完整链接。');return;}
       if(identity){put(`youqi.letters.identity.${ctx.room.id}`,identity);seen=get(key('seen'),0);input.value=get(draftKey(),'');updateComposer();}
     }
     booting=true;

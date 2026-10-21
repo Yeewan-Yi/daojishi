@@ -1,9 +1,9 @@
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeShare, decodeShare, toLocalInput } from './countdown.js';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
-import { mountFlight, flightStage } from './flight.js';
+import { mountFlight, flightStage } from './flight.js?v=20261021-chuanshu';
 import { mountFlipClock } from './flip-clock.js';
-import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js';
-import { mountLetters } from './letters-ui.js?v=20261021-ime2';
+import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261021-chuanshu';
+import { mountLetters } from './letters-ui.js?v=20261021-chuanshu';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -230,7 +230,7 @@ function renderTime() {
   $('percent-minor').hidden = $('percent-sign').hidden = false;
   $('journey-percent').setAttribute('aria-label', percent);
   $('journey-progress-fill').style.width = percent;
-  $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(5)}%`;
+  $('progress-value').textContent = `已飞行 ${percent} · 剩余 ${(100 - value.progress).toFixed(7)}%`;
   $('progress-bar').style.width = percent;
   $('progress-track').setAttribute('aria-valuenow', parts.text);
   $('progress-track').setAttribute('aria-valuetext', `${status}，航程完成 ${percent}`);
@@ -541,7 +541,7 @@ lettersUI = mountLetters({getContext:()=>({room,record:cloudRecord}),openSharing
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-import('./globe-3d.js').then(async ({ mountGlobe }) => {
+import('./globe-3d.js?v=20261021-chuanshu').then(async ({ mountGlobe }) => {
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;
   if (latestGlobeValue) globe3d.update(latestGlobeValue);
