@@ -12,8 +12,8 @@
   <link rel="stylesheet" href="./refined.css">
   <link rel="stylesheet" href="./scene.css">
   <link rel="stylesheet" href="./fonts.css">
-  <link rel="stylesheet" href="./letters.css?v=20261021-glyphs">
-  <script type="module" src="./app.js?v=20261021-glyphs"></script>
+  <link rel="stylesheet" href="./letters.css?v=20261021-capsule">
+  <script type="module" src="./app.js?v=20261021-capsule"></script>
 </head>
 <body>
   <svg xmlns="http://www.w3.org/2000/svg" class="svg-library" aria-hidden="true">
@@ -23,7 +23,6 @@
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></symbol>
     <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
-    <symbol id="i-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="11" y="11" width="7" height="6" rx="1"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/></symbol>
@@ -40,10 +39,10 @@
     <header class="header">
       <a class="brand" href="./" aria-label="有期首页"><span class="brand-mark"><svg><use href="#i-clock"/></svg></span><span>有期</span></a>
       <div class="header-actions" role="group" aria-label="页面工具">
-        <button class="icon-button nav-tool" id="theme-button" aria-label="切换深色模式" data-label="切换深色模式"><svg aria-hidden="true"><use href="#nav-moon"/></svg></button>
-        <button class="icon-button nav-tool" id="focus-button" aria-label="进入专注模式" data-label="专注"><svg aria-hidden="true"><use href="#nav-focus"/></svg></button>
-        <button class="icon-button nav-tool" id="edit-button" aria-label="编辑" data-label="编辑"><svg aria-hidden="true"><use href="#nav-edit"/></svg></button>
-        <button class="icon-button nav-tool" id="share-button" aria-label="分享" data-label="分享"><svg aria-hidden="true"><use href="#nav-share"/></svg></button>
+        <button class="icon-button nav-tool" id="theme-button" aria-label="切换深色模式"><svg aria-hidden="true"><use href="#nav-moon"/></svg><span class="nav-caption" aria-hidden="true">切换深色模式</span></button>
+        <button class="icon-button nav-tool" id="focus-button" aria-label="进入专注模式"><svg aria-hidden="true"><use href="#nav-focus"/></svg><span class="nav-caption" aria-hidden="true">专注</span></button>
+        <button class="icon-button nav-tool" id="edit-button" aria-label="编辑"><svg aria-hidden="true"><use href="#nav-edit"/></svg><span class="nav-caption" aria-hidden="true">编辑</span></button>
+        <button class="icon-button nav-tool" id="share-button" aria-label="分享"><svg aria-hidden="true"><use href="#nav-share"/></svg><span class="nav-caption" aria-hidden="true">分享</span></button>
       </div>
     </header>
 
@@ -70,7 +69,7 @@
         <div class="date-point"><span class="date-content"><span class="date-label">故事的起点</span><span class="date-value" id="start-date"></span><span class="date-time" id="start-time"></span></span></div>
         <div class="date-point"><span class="date-content"><span class="date-label">期待的日子</span><span class="date-value" id="end-date"></span><span class="date-time" id="end-time"></span></span></div>
       </section>
-      <div class="below-card"><div class="sync-status"><span class="save-status" id="save-status"><svg><use href="#i-check"/></svg><span id="save-label">已保存在此设备</span></span><button class="text-button" id="retry-sync" hidden>重试连接</button></div><button class="text-button" id="float-button"><svg><use href="#i-window"/></svg><span>悬浮小窗</span></button></div>
+      <div class="below-card"><div class="sync-status"><span class="save-status" id="save-status"><svg><use href="#i-check"/></svg><span id="save-label">已保存在此设备</span></span><button class="text-button" id="retry-sync" hidden>重试连接</button></div></div>
       <span class="scroll-cue" id="scroll-cue" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span>
       </div>
     </main>
@@ -82,7 +81,6 @@
 
   <dialog id="share-dialog" class="modal"><div class="modal-heading"><div><span class="eyebrow">GOOD THINGS, SHARED</span><h2>把期待，分享出去。</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭"><svg><use href="#i-close"/></svg></button></div><p class="modal-description">和另一个人，一起看着重要的日子慢慢靠近。</p><div class="share-preview"><span class="status-dot"></span><span id="share-title"></span><span id="share-date"></span></div><div id="permission-row" hidden><label for="share-permission">链接权限</label><select id="share-permission"><option value="edit">共同编辑 · 双方都能修改</option><option value="view">仅查看 · 对方不能修改</option></select></div><label for="share-url">分享链接</label><div class="copy-field"><input id="share-url" readonly aria-label="分享链接"><button class="button button-primary" id="copy-button"><svg><use href="#i-link"/></svg>复制</button></div><div class="share-note"><strong id="share-kind">当前为快照分享</strong><p id="share-explanation">快照链接保存当前设置，后续修改不会同步。开启共同使用后，双方可持续同步。</p></div><button class="button button-primary cloud-create" id="cloud-create"><svg><use href="#i-link"/></svg>开启共同使用</button><p class="form-error" id="cloud-error" role="alert"></p><p class="field-note">共享链接就是访问凭证，请妥善保存并仅发送给信任的人。共同编辑链接的持有人可以修改这份倒计时。</p></dialog>
 
-  <dialog id="float-dialog" class="modal"><div class="modal-heading"><div><span class="eyebrow">KEEP IT CLOSE</span><h2>让期待，留在眼前。</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭"><svg><use href="#i-close"/></svg></button></div><p class="modal-description">当前浏览器不支持置顶悬浮小窗。你仍然可以使用专注模式，把倒计时放大到整个页面。</p><p class="field-note">支持 Document Picture-in-Picture 的桌面浏览器可开启置顶小窗。小窗需要保留原网页；关闭原网页，小窗也会关闭。</p><div class="modal-actions"><button class="button close-dialog">稍后再说</button><button class="button button-primary" id="fallback-focus">进入专注模式<svg><use href="#i-expand"/></svg></button></div></dialog>
   <div class="letters-backdrop" id="letters-backdrop" hidden></div>
   <aside class="letters-dock" id="letters-dock" aria-label="双人传书">
     <button class="letters-trigger" id="letters-trigger" aria-label="传书" aria-expanded="false" aria-controls="letters-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5C14 2.5 8 7 7 14l3 2c6-1 11-6 10.5-12.5ZM4 21 16 8M8 17l-1 4H3l1-4M12 12h5M12 12V8"/></svg><span>传书</span><span class="letters-unread" id="letters-unread" hidden></span></button>

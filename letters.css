@@ -45,16 +45,17 @@ body.focus-mode .letters-backdrop{display:none!important}
 .letters-dock.is-editing .letters-close{display:grid!important}
 @media(prefers-reduced-motion:reduce){.app-shell,.header,.journey-stage .flight-visual.globe-3d,.letters-panel{transition:none}}
 
-/* Geometric tools with captions outside the fixed button footprint. */
-.header-actions{gap:12px}
-.header .nav-tool{position:relative;isolation:isolate;width:40px;height:40px;min-width:40px;padding:6px;border:0;border-radius:0;background:transparent;color:var(--accent-strong);cursor:pointer;transition:color .22s ease,background-color .22s ease}
-.header .nav-tool svg{width:28px;height:28px;stroke-width:1.25;stroke-linecap:square;stroke-linejoin:miter;transition:transform .25s ease}
-.nav-tool:before{content:'';position:absolute;inset:1px;background:linear-gradient(var(--accent),var(--accent)) left top/8px 1px no-repeat,linear-gradient(var(--accent),var(--accent)) left top/1px 8px no-repeat,linear-gradient(var(--accent),var(--accent)) right bottom/8px 1px no-repeat,linear-gradient(var(--accent),var(--accent)) right bottom/1px 8px no-repeat;opacity:.24;transition:opacity .22s}
-.header .nav-tool:hover,.header .nav-tool:focus-visible{background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--text)}
-.nav-tool:hover:before,.nav-tool:focus-visible:before{opacity:1}
-.nav-tool:hover svg{transform:translateY(-1px)}
-.nav-tool:after{content:attr(data-label);position:absolute;right:0;top:calc(100% + 7px);padding:5px 9px;border-left:1px solid var(--accent);background:color-mix(in srgb,var(--bg) 96%,transparent);color:var(--accent-strong);font:inherit;font-size:13px;line-height:1.5;letter-spacing:1px;white-space:nowrap;pointer-events:none;opacity:0;transform:translateY(-3px);transition:opacity .18s ease,transform .18s ease}
-.nav-tool:hover:after,.nav-tool:focus-visible:after{opacity:1;transform:translateY(0)}
+/* Captions unfold beside the engraved tool icons. */
+.header-actions{gap:9px}
+.header .nav-tool{position:relative;isolation:isolate;display:inline-flex;align-items:center;justify-content:flex-start;flex:none;width:auto;min-width:40px;height:40px;padding:6px;border:1px solid transparent;border-radius:0;background:transparent;color:var(--accent-strong);cursor:pointer;transition:color .22s ease,background-color .22s ease,border-color .22s ease}
+.header .nav-tool svg{width:26px;height:26px;flex:none;stroke-width:1.25;stroke-linecap:square;stroke-linejoin:miter}
+.header .nav-tool .nav-caption{display:block;max-width:0;overflow:hidden;white-space:nowrap;opacity:0;transform:translateX(-5px);margin-left:0;margin-right:0;font-size:13px;letter-spacing:1px;line-height:1.5;transition:max-width .32s cubic-bezier(.22,.65,.3,1),margin .32s cubic-bezier(.22,.65,.3,1),opacity .2s ease,transform .32s ease}
+.header .nav-tool:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(var(--accent),var(--accent)) left top/7px 1px no-repeat,linear-gradient(var(--accent),var(--accent)) left top/1px 7px no-repeat,linear-gradient(var(--accent),var(--accent)) right bottom/7px 1px no-repeat,linear-gradient(var(--accent),var(--accent)) right bottom/1px 7px no-repeat;opacity:.28;transition:opacity .22s ease}
+.header .nav-tool:hover:before,.header .nav-tool:focus-visible:before{opacity:.7}
+.header .nav-tool:hover,.header .nav-tool:focus-visible{background:color-mix(in srgb,var(--accent) 8%,transparent);border-color:transparent;color:var(--text)}
+.header .nav-tool:hover .nav-caption,.header .nav-tool:focus-visible .nav-caption{max-width:104px;margin-left:6px;margin-right:8px;opacity:1;transform:translateX(0)}
+.header-actions:has(.nav-tool:hover) .nav-tool:focus-visible:not(:hover){background:transparent;border-color:transparent}
+.header-actions:has(.nav-tool:hover) .nav-tool:focus-visible:not(:hover) .nav-caption{max-width:0;margin:0;opacity:0;transform:translateX(-5px)}
 .header .nav-tool:disabled{opacity:.4;cursor:default}
 .header .nav-tool:disabled:hover{background:transparent}
 #letter-send{padding:8px 13px;border:1px solid transparent;border-radius:2px;background:transparent;transition:background-color .25s ease,border-color .25s ease,color .25s ease,opacity .25s ease}
@@ -63,6 +64,6 @@ body.focus-mode .letters-backdrop{display:none!important}
 #letter-send:disabled:hover svg{transform:none}
 #letter-send:not(:disabled){background:color-mix(in srgb,var(--accent) 14%,var(--bg));border-color:color-mix(in srgb,var(--accent) 25%,transparent);color:var(--accent-strong)}
 #letter-send:not(:disabled):hover{background:color-mix(in srgb,var(--accent) 22%,var(--bg))}
-@media(max-width:520px){.header-actions{gap:5px}.header .nav-tool{width:36px;min-width:36px;height:38px;padding:6px}.header .nav-tool svg{width:26px;height:26px}}
+@media(max-width:520px){.header-actions{gap:4px}.header .nav-tool{min-width:34px;height:36px;padding:4px}.header .nav-tool svg{width:24px;height:24px}.header .nav-tool .nav-caption{font-size:11px;letter-spacing:0}.header .nav-tool:hover .nav-caption,.header .nav-tool:focus-visible .nav-caption{max-width:72px;margin-left:4px;margin-right:4px}}
 @media(hover:none),(pointer:coarse),(max-width:600px){.letters-dock.is-open .letters-trigger{visibility:hidden;pointer-events:none}}
-@media(prefers-reduced-motion:reduce){.header .nav-tool,.header .nav-tool svg,.nav-tool:before,.nav-tool:after,#letter-send,#letter-send svg{transition:none}}
+@media(prefers-reduced-motion:reduce){.header .nav-tool,.header .nav-tool svg,.nav-tool .nav-caption,#letter-send,#letter-send svg{transition:none}}

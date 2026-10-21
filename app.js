@@ -10,10 +10,8 @@ const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
 const dateFormat = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 const timeFormat = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
 const weekdayFormat = new Intl.DateTimeFormat('zh-CN', { weekday: 'long' });
-const pad = n => String(n).padStart(2, '0');
 let state;
 let sharedView = false;
-let pipWindow = null;
 let toastTimeout;
 let tickTimeout;
 let editingBaseline;
@@ -37,7 +35,6 @@ let globe3d = null;
 let lettersUI = null;
 let latestGlobeValue = null;
 const flipClock = mountFlipClock($('digits'));
-let pipFlight = null;
 
 function rememberRoom() {
   try { localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(room)); } catch { /* The room link still works. */ }
@@ -58,7 +55,6 @@ function setEditAccess() {
     $(id).disabled = disabled;
     $(id).title = disabled ? cloudRecord ? '当前链接仅可查看' : '等待从云端读取编辑权限' : '';
   }
-  $('float-button').disabled = invalidRoomLink || !!room && !cloudRecord && !cloudCache;
 }
 
 function applyCloudRecord(next) {
@@ -95,7 +91,7 @@ async function refreshCloud() {
     cloudRequest = null;
     setSaveLabel();
     if (!cloudCache) renderMetadata();
-    const delay = cloudStatus === 'denied' ? null : cloudStatus === 'setup' ? 30000 : cloudStatus === 'synced' ? document.hidden && !pipWindow ? 15000 : 2000 : Math.min(30000, 2000 * 2 ** Math.min(cloudFailures, 4));
+    const delay = cloudStatus === 'denied' ? null : cloudStatus === 'setup' ? 30000 : cloudStatus === 'synced' ? document.hidden ? 15000 : 2000 : Math.min(30000, 2000 * 2 ** Math.min(cloudFailures, 4));
     if (delay !== null) cloudTimer = setTimeout(refreshCloud, delay);
   }
 }
@@ -236,7 +232,6 @@ function renderTime() {
   $('progress-track').setAttribute('aria-valuenow', parts.text);
   $('progress-track').setAttribute('aria-valuetext', `${status}，航程完成 ${percent}`);
   $('progress-caption').textContent = { upcoming: '航班等待起飞', active: '沿着航线，慢慢靠近', ended: '航迹已完整点亮' }[value.phase];
-  if (pipWindow && !pipWindow.closed) renderPip(value);
 }
 
 function tick() {
@@ -373,9 +368,8 @@ function applyTheme(theme) {
   $('theme-button').querySelector('use').setAttribute('href', theme === 'dark' ? '#nav-sun' : '#nav-moon');
   const label = theme === 'dark' ? '切换浅色模式' : '切换深色模式';
   $('theme-button').setAttribute('aria-label', label);
-  $('theme-button').dataset.label = label;
+  $('theme-button').querySelector('.nav-caption').textContent = label;
   document.querySelector('meta[name=theme-color]').content = theme === 'dark' ? '#0b1210' : '#f5f6f2';
-  if (pipWindow && !pipWindow.closed) pipWindow.document.documentElement.dataset.theme = theme;
 }
 $('theme-button').addEventListener('click', () => {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -392,43 +386,8 @@ function focusMode(enabled) {
 }
 $('focus-button').addEventListener('click', () => focusMode(true));
 $('exit-focus').addEventListener('click', () => focusMode(false));
-$('fallback-focus').addEventListener('click', () => { $('float-dialog').close(); focusMode(true); });
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && !document.querySelector('dialog[open]')) focusMode(false);
-});
-
-function renderPip(value) {
-  const doc = pipWindow.document;
-  doc.getElementById('pip-title').textContent = state.title;
-  doc.getElementById('pip-time').textContent = `${pad(value.days)} 天 ${pad(value.hours)}:${pad(value.minutes)}:${pad(value.seconds)}`;
-  pipFlight?.update(value, state);
-}
-
-$('float-button').addEventListener('click', async () => {
-  if (!('documentPictureInPicture' in window)) { $('float-dialog').showModal(); return; }
-  if (pipWindow && !pipWindow.closed) { pipWindow.focus(); return; }
-  $('float-button').disabled = true;
-  try {
-    pipWindow = await window.documentPictureInPicture.requestWindow({ width: 380, height: 310 });
-    const doc = pipWindow.document;
-    doc.title = '有期 · 悬浮倒计时';
-    doc.documentElement.lang = 'zh-CN';
-    doc.documentElement.dataset.theme = document.documentElement.dataset.theme;
-    for (const file of ['styles.css', 'flight.css', 'refined.css', 'fonts.css']) {
-      const link = doc.createElement('link'); link.rel = 'stylesheet'; link.href = new URL(file, document.baseURI).href;
-      doc.head.append(link);
-    }
-    doc.body.className = 'pip-body';
-    const title = doc.createElement('h1'); title.id = 'pip-title';
-    const time = doc.createElement('div'); time.id = 'pip-time'; time.setAttribute('role', 'timer');
-    const flight = doc.createElement('div'); flight.className = 'flight-visual';
-    doc.body.append(title, flight, time);
-    pipFlight = mountFlight(flight, 'mini');
-    renderPip(getCountdown(state));
-    pipWindow.addEventListener('pagehide', () => { pipWindow = null; pipFlight = null; }, { once: true });
-    toast('小窗已开启，请保留此网页。');
-  } catch { toast('未能打开悬浮小窗，请重试或使用专注模式。'); }
-  finally { $('float-button').disabled = false; }
 });
 
 window.addEventListener('storage', event => {
