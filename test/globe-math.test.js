@@ -1,8 +1,48 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { Euler, Quaternion, Vector3 } from '../vendor/three.module.js';
+import { trackballPoint } from '../globe-math.js';
 import { AIRCRAFT_RADIUS, ROUTE_RADIUS, advanceZoom, advanceExploration, explorationInput, aircraftBeacon, clampProgress, dampProgress, easeViewReset, globeCameraDistance, nearestAngle, percentageParts, resetPose, routePoint, routeTangent, spherePoint, useAircraftLabel } from '../globe-math.js';
 
 const close = (actual, expected, epsilon = 1e-9) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} should equal ${expected}`);
+
+test('trackball has a continuous curved rim and remains finite outside the globe', () => {
+  for (const x of [-100, -2, -.71, 0, .71, 2, 100]) for (const y of [-10, 0, 10]) {
+    const point = trackballPoint(x, y);
+    close(Math.hypot(...point), 1);
+    assert.ok(point.every(Number.isFinite) && point[2] > 0);
+  }
+  const before = trackballPoint(Math.SQRT1_2 - 1e-6, 0);
+  const after = trackballPoint(Math.SQRT1_2 + 1e-6, 0);
+  assert.ok(Math.hypot(...after.map((v, i) => v - before[i])) < .00001);
+});
+
+test('trackball supports roll and repeated pole crossings from arbitrary tilted orientations', () => {
+  const home = new Quaternion().setFromEuler(new Euler(.12, .32, -.07));
+  const orientation = home.clone(), spin = new Quaternion();
+  let previous = new Vector3(...trackballPoint(.8, 0));
+  for (let step = 1; step <= 3600; step++) {
+    const angle = step * Math.PI / 180;
+    const next = new Vector3(...trackballPoint(.8 * Math.cos(angle), .8 * Math.sin(angle)));
+    spin.setFromUnitVectors(previous, next);
+    orientation.premultiply(spin).normalize();
+    assert.ok(orientation.toArray().every(Number.isFinite));
+    close(orientation.length(), 1);
+    previous.copy(next);
+  }
+  const rimTurn = new Quaternion().setFromUnitVectors(new Vector3(...trackballPoint(.8, 0)), new Vector3(...trackballPoint(0, .8)));
+  assert.ok(Math.abs(rimTurn.z) > .3, 'dragging around the rim must permit rotation around the viewing axis');
+  let previousDistance = Infinity;
+  const startDistance = orientation.angleTo(home);
+  assert.ok(startDistance <= Math.PI);
+  for (let step = 0; step <= 100; step++) {
+    const pose = new Quaternion().slerpQuaternions(orientation, home, easeViewReset(step / 100));
+    const distance = pose.angleTo(home);
+    assert.ok(distance <= previousDistance + 1e-7);
+    previousDistance = distance;
+  }
+  close(previousDistance, 0, 1e-7);
+});
 
 test('the gesture that finishes shrinking immediately hands its unused distance to page scrolling', () => {
   assert.deepEqual(explorationInput(.5, 100), {zoom:.3, scroll:0});

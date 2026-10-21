@@ -8,6 +8,14 @@ export function spherePoint(longitude, latitude, radius = 1) {
 export const ROUTE_RADIUS = 1.012;
 export const AIRCRAFT_RADIUS = 1.065;
 export const VIEW_RESET_DURATION = 800;
+
+// Sphere near its center, hyperbolic sheet outside: no hard rim or pole clamp.
+export function trackballPoint(x, y) {
+  const distance = Math.hypot(x, y);
+  const z = distance < Math.SQRT1_2 ? Math.sqrt(1 - distance * distance) : .5 / distance;
+  const length = Math.hypot(x, y, z);
+  return [x / length, y / length, z / length];
+}
 // A small increase over the original 1.08 approach; zoom never changes the scene style.
 export const globeCameraDistance = zoom => 4.4 - clampProgress(zoom) * 1.23;
 
