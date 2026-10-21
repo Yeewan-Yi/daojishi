@@ -12,7 +12,7 @@ function notebook(t){
   t.mock.timers.enable({apis:['setTimeout']});
   const elements=new Map(), document=new EventTarget(), window=new EventTarget();
   class Element extends EventTarget{
-    constructor(id){super();this.id=id;this.hover=false;this.value='';this.attributes=new Map();this.blurCount=0;this.submits=0;this.classList={toggle(){}};this.style={setProperty(){}};}
+    constructor(id){super();this.id=id;this.hover=false;this.value='';this.attributes=new Map();this.blurCount=0;this.submits=0;const classes=new Set();this.classList={toggle(name,on){if(on??!classes.has(name))classes.add(name);else classes.delete(name);},contains:name=>classes.has(name)};this.style={setProperty(){}};}
     matches(selector){return selector===':hover'?this.hover:['letter-body','letter-name-self','letter-name-other'].includes(this.id);}
     contains(element){return !!element&&element.id!=='outside';}
     setAttribute(key,value){this.attributes.set(key,value);}
@@ -80,6 +80,25 @@ test('delivery is disabled for empty, whitespace, oversized and composing drafts
   emit(ui.dock,'compositionstart');assert.equal(send.disabled,true);
   emit(ui.dock,'compositionend');assert.equal(send.disabled,false);
   ui.editor.value='';emit(ui.editor,'input');assert.equal(send.disabled,true);
+});
+
+test('the writing indicator follows actual typing and rests after a pause without closing the editor',t=>{
+  const ui=notebook(t);ui.open();ui.editor.focus();
+  assert.equal(ui.dock.classList.contains('is-writing'),false);
+  ui.editor.value='写给你';emit(ui.editor,'input');assert.equal(ui.dock.classList.contains('is-writing'),true);
+  ui.tick(1200);emit(ui.editor,'input');ui.tick(1200);assert.equal(ui.dock.classList.contains('is-writing'),true);
+  ui.tick(401);assert.equal(ui.dock.classList.contains('is-writing'),false);assert.equal(ui.expanded(),true);
+  emit(ui.editor,'input');ui.editor.value='';emit(ui.editor,'input');assert.equal(ui.dock.classList.contains('is-writing'),false);
+});
+
+test('IME composition keeps the writing indicator active, and explicitly closing stops it',t=>{
+  const ui=notebook(t);ui.open();ui.editor.focus();
+  emit(ui.dock,'compositionstart',{target:ui.editor});ui.tick(1700);
+  assert.equal(ui.dock.classList.contains('is-writing'),true);
+  ui.editor.value='候选文字';emit(ui.dock,'compositionend',{target:ui.editor});
+  ui.tick(1601);assert.equal(ui.dock.classList.contains('is-writing'),false);
+  emit(ui.editor,'input');emit(ui.get('letters-close'),'click');
+  assert.equal(ui.dock.classList.contains('is-writing'),false);
 });
 
 test('native IME focus moving to body or a proxy control does not end the editing session',t=>{

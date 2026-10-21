@@ -13,7 +13,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   window.visualViewport?.addEventListener('scroll',fitKeyboard);
   fitKeyboard();
   let opened=false, closing, timer, busy=false, fetching=false, booting=false, contextKey='', identity=null, pair=null, pendingPair=null;
-  let editorActive=false, composing=false, imeSettling=false, imeTimer;
+  let editorActive=false, composing=false, imeSettling=false, imeTimer, writingTimer;
   let items=[], cursor=null, revision=-1, latestOther=0, edit=null, sendId=crypto.randomUUID(), seen=0, pendingRevision=null, names='', view='loading';
   let explicit=null, invalidIdentity=false;
   try { explicit=identityFromHash(location.hash); } catch { invalidIdentity=true; }
@@ -26,7 +26,12 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
     $('letters-links-button').hidden=!identity || !['book','links'].includes(next);
     for(const name of ['loading','local','setup','identity','book','links']) $('letters-'+name).hidden=name!==next;
   }
-  function setEditing(value){editorActive=value;dock.classList.toggle('is-editing',value);}
+  function stopWriting(){clearTimeout(writingTimer);dock.classList.toggle('is-writing',false);}
+  function writeStroke(){
+    clearTimeout(writingTimer);dock.classList.toggle('is-writing',true);
+    writingTimer=setTimeout(()=>{if(composing)writeStroke();else stopWriting();},1600);
+  }
+  function setEditing(value){editorActive=value;dock.classList.toggle('is-editing',value);if(!value)stopWriting();}
   function setOpen(value) {
     clearTimeout(closing); opened=value;
     if(!value){setEditing(false);composing=false;imeSettling=false;clearTimeout(imeTimer);}
@@ -51,9 +56,10 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
     // next focus target. None of these alone means the user finished editing.
     if(fine.matches)closeWhenIdle(160);
   });
-  dock.addEventListener('compositionstart',()=>{setEditing(true);composing=true;imeSettling=false;clearTimeout(imeTimer);clearTimeout(closing);counter();});
-  dock.addEventListener('compositionend',()=>{
+  dock.addEventListener('compositionstart',event=>{setEditing(true);composing=true;imeSettling=false;clearTimeout(imeTimer);clearTimeout(closing);counter();if(event.target===input)writeStroke();});
+  dock.addEventListener('compositionend',event=>{
     composing=false;imeSettling=true;clearTimeout(imeTimer);counter();
+    if(event.target===input){if(input.value.trim())writeStroke();else stopWriting();}
     // Some IMEs commit before forwarding the candidate's mouse/escape event.
     imeTimer=setTimeout(()=>{imeSettling=false;},500);
   });
@@ -87,7 +93,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   function saveDraft(){put(draftKey(),input.value);}
   function canSend(){return !busy && !composing && !!input.value.trim() && [...input.value.trim()].length<=500;}
   function counter(){const length=[...input.value].length;$('letter-count').textContent=`${length} / 500`;$('letter-count').classList.toggle('is-over',length>500);$('letter-send').disabled=!canSend();}
-  input.addEventListener('input',()=>{saveDraft();counter();});
+  input.addEventListener('input',()=>{saveDraft();counter();if(input.value.trim()||composing)writeStroke();else stopWriting();});
   input.addEventListener('keydown',event=>{if(!event.isComposing&&event.keyCode!==229&&!composing&&(event.ctrlKey||event.metaKey)&&event.key==='Enter'){if(canSend())$('letter-form').requestSubmit();event.preventDefault();}});
   $('letter-cancel').addEventListener('click',()=>{
     saveDraft();edit=null;sendId=crypto.randomUUID();input.value=get(draftKey(),'');updateComposer();
@@ -95,7 +101,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   function updateComposer(){
     $('letter-send-label').textContent=edit?'保存修改':'递函';$('letter-cancel').hidden=!edit;
     $('letter-composer-label').textContent=edit?'修改这封信':`执笔 · ${names}`;
-    input.disabled=busy;counter();
+    input.disabled=busy;if(busy)stopWriting();counter();
   }
   function render() {
     list.replaceChildren();
