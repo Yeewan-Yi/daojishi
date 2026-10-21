@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="./refined.css">
   <link rel="stylesheet" href="./scene.css">
   <link rel="stylesheet" href="./fonts.css">
+  <link rel="stylesheet" href="./letters.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
@@ -36,8 +37,8 @@
       <div class="header-actions">
         <button class="icon-button" id="theme-button" aria-label="切换深色模式" title="切换深色模式"><svg><use href="#i-moon"/></svg></button>
         <button class="icon-button" id="focus-button" aria-label="进入专注模式" title="专注模式"><svg><use href="#i-expand"/></svg></button>
-        <button class="button button-quiet" id="edit-button"><svg><use href="#i-edit"/></svg><span>编辑</span></button>
-        <button class="button button-quiet" id="share-button"><svg><use href="#i-share"/></svg><span>分享</span></button>
+        <button class="button button-quiet" id="edit-button" aria-label="编辑"><svg><use href="#i-edit"/></svg><span>编辑</span></button>
+        <button class="button button-quiet" id="share-button" aria-label="分享"><svg><use href="#i-share"/></svg><span>分享</span></button>
       </div>
     </header>
 
@@ -77,6 +78,20 @@
   <dialog id="share-dialog" class="modal"><div class="modal-heading"><div><span class="eyebrow">GOOD THINGS, SHARED</span><h2>把期待，分享出去。</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭"><svg><use href="#i-close"/></svg></button></div><p class="modal-description">和另一个人，一起看着重要的日子慢慢靠近。</p><div class="share-preview"><span class="status-dot"></span><span id="share-title"></span><span id="share-date"></span></div><div id="permission-row" hidden><label for="share-permission">链接权限</label><select id="share-permission"><option value="edit">共同编辑 · 双方都能修改</option><option value="view">仅查看 · 对方不能修改</option></select></div><label for="share-url">分享链接</label><div class="copy-field"><input id="share-url" readonly aria-label="分享链接"><button class="button button-primary" id="copy-button"><svg><use href="#i-link"/></svg>复制</button></div><div class="share-note"><strong id="share-kind">当前为快照分享</strong><p id="share-explanation">快照链接保存当前设置，后续修改不会同步。开启共同使用后，双方可持续同步。</p></div><button class="button button-primary cloud-create" id="cloud-create"><svg><use href="#i-link"/></svg>开启共同使用</button><p class="form-error" id="cloud-error" role="alert"></p><p class="field-note">共享链接就是访问凭证，请妥善保存并仅发送给信任的人。共同编辑链接的持有人可以修改这份倒计时。</p></dialog>
 
   <dialog id="float-dialog" class="modal"><div class="modal-heading"><div><span class="eyebrow">KEEP IT CLOSE</span><h2>让期待，留在眼前。</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭"><svg><use href="#i-close"/></svg></button></div><p class="modal-description">当前浏览器不支持置顶悬浮小窗。你仍然可以使用专注模式，把倒计时放大到整个页面。</p><p class="field-note">支持 Document Picture-in-Picture 的桌面浏览器可开启置顶小窗。小窗需要保留原网页；关闭原网页，小窗也会关闭。</p><div class="modal-actions"><button class="button close-dialog">稍后再说</button><button class="button button-primary" id="fallback-focus">进入专注模式<svg><use href="#i-expand"/></svg></button></div></dialog>
+  <div class="letters-backdrop" id="letters-backdrop" hidden></div>
+  <aside class="letters-dock" id="letters-dock" aria-label="双人留言簿">
+    <button class="letters-trigger" id="letters-trigger" aria-label="留言" aria-expanded="false" aria-controls="letters-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5C14 2.5 8 7 7 14l3 2c6-1 11-6 10.5-12.5ZM4 21 16 8M8 17l-1 4H3l1-4M12 12h5M12 12V8"/></svg><span>留言</span><span class="letters-unread" id="letters-unread" hidden></span></button>
+    <section class="letters-panel" id="letters-panel" aria-labelledby="letters-title" inert>
+      <div class="letters-heading"><h2 id="letters-title">我们的留言</h2><div class="letters-heading-actions"><button id="letters-links-button" type="button" hidden>专属链接</button><button class="letters-close" id="letters-close" aria-label="收起留言"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div></div>
+      <div class="letters-view" id="letters-loading"><p>正在翻开留言簿…</p></div>
+      <div class="letters-view" id="letters-local" hidden><p>把这份期待连在一起，<br>就能留下只属于两个人的话。</p><button class="letters-primary" id="letters-enable-cloud">开启共同使用 <svg><use href="#i-arrow"/></svg></button></div>
+      <div class="letters-view" id="letters-setup" hidden><p>两个人，一本共同的留言簿。</p><form id="letters-setup-form"><label for="letter-name-self">你的称呼<input id="letter-name-self" required maxlength="12" autocomplete="nickname" placeholder="怎么称呼你"></label><label for="letter-name-other">对方的称呼<input id="letter-name-other" required maxlength="12" autocomplete="off" placeholder="另一个重要的人"></label><button class="letters-primary" id="letters-create" type="submit">开始写下我们的故事 <svg><use href="#i-arrow"/></svg></button></form></div>
+      <div class="letters-view" id="letters-identity" hidden><p>请用自己的留言专属链接打开，<br>这里会认得你，也记得你写下的话。</p><button class="letters-primary" id="letters-recover" hidden>查看已保存的专属链接 <svg><use href="#i-arrow"/></svg></button></div>
+      <div class="letters-view letters-book" id="letters-book" hidden><button class="letters-updates" id="letters-updates" hidden>留言有更新 · 回到最新</button><div class="letters-empty" id="letters-empty"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 31V9h24v22M8 13h24M14 20h12M14 25h8M5 33h30"/></svg>第一句话，留给你<span>写下这段等待中的小事</span></div><div class="letters-list" id="letters-list" aria-label="留言历史" tabindex="0"></div><button class="letters-older" id="letters-older" hidden>查看更早的留言</button><form class="letter-form" id="letter-form"><label for="letter-body" id="letter-composer-label">写下想说的话</label><textarea id="letter-body" rows="3" placeholder="今天，有什么想对你说的……" aria-describedby="letter-count"></textarea><div class="letter-form-footer"><span class="letter-count" id="letter-count">0 / 500</span><div><button type="button" class="letter-quiet" id="letter-cancel" hidden>取消修改</button><button type="submit" class="letters-primary" id="letter-send"><span id="letter-send-label">留言</span><svg><use href="#i-arrow"/></svg></button></div></div></form></div>
+      <div class="letters-view" id="letters-links" hidden><p class="letters-links-note">各自保存自己的链接，发给对方另一条。链接代表留言身份，请勿公开转发。</p><div id="letter-links"></div><button class="letters-primary" id="letters-links-done">回到留言簿 <svg><use href="#i-arrow"/></svg></button></div>
+      <p class="letters-error" id="letters-error" role="alert"></p><button class="letter-quiet" id="letters-retry" hidden>重试连接</button>
+    </section>
+  </aside>
   <div class="toast" id="toast" role="status" hidden></div>
 </body>
 </html>

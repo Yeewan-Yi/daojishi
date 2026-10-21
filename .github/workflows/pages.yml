@@ -31,12 +31,15 @@ jobs:
           node --check globe-3d.js
           node --check globe-math.js
           node --check globe-labels.js
+          node --check letters.js
+          node --check letters-ui.js
           node --test
       - name: Prepare public files
         run: |
           mkdir _site
           cp index.html styles.css flight.css refined.css scene.css fonts.css flight.js flip-clock.js app.js countdown.js cloud.js config.js favicon.svg _site/
           cp globe-3d.js globe-math.js globe-labels.js land.geojson _site/
+          cp letters.js letters-ui.js letters.css _site/
           mkdir _site/vendor
           cp vendor/three.module.js vendor/THREE-LICENSE vendor/FONT-LICENSES.txt vendor/FZSongKeBenXiuKaiS.woff2 _site/vendor/
           touch _site/.nojekyll

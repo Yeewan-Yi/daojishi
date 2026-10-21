@@ -3,6 +3,7 @@ import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validate
 import { mountFlight, flightStage } from './flight.js';
 import { mountFlipClock } from './flip-clock.js';
 import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js';
+import { mountLetters } from './letters-ui.js';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -33,13 +34,18 @@ let editingVersion = null;
 let invalidRoomLink = false;
 const mainFlight = mountFlight($('flight-visual'), 'main');
 let globe3d = null;
+let lettersUI = null;
 let latestGlobeValue = null;
 const flipClock = mountFlipClock($('digits'));
 let pipFlight = null;
 
 function rememberRoom() {
   try { localStorage.setItem(ROOM_STORAGE_KEY, JSON.stringify(room)); } catch { /* The room link still works. */ }
-  history.replaceState(null, '', roomUrl(location.href, room));
+  const params = new URLSearchParams(location.hash.slice(1));
+  const url = new URL(roomUrl(location.href, room)), hash = new URLSearchParams(url.hash.slice(1));
+  for (const name of ['person', 'note']) if (params.has(name)) hash.set(name, params.get(name));
+  url.hash = hash.toString();
+  history.replaceState(null, '', url.href);
 }
 
 function cacheCloud() {
@@ -66,6 +72,7 @@ function applyCloudRecord(next) {
   setEditAccess();
   renderMetadata();
   if ($('share-dialog').open) updateSharePanel();
+  lettersUI?.refresh();
   return changed;
 }
 
@@ -376,6 +383,7 @@ $('theme-button').addEventListener('click', () => {
 });
 
 function focusMode(enabled) {
+  if (enabled) lettersUI?.close();
   document.body.classList.toggle('focus-mode', enabled);
   $('exit-focus').hidden = !enabled;
   if (enabled) $('exit-focus').focus();
@@ -468,7 +476,8 @@ function installScrollScene() {
     document.querySelector('.globe-tools').inert = p >= .12;
     document.querySelector('.globe-tools').style.pointerEvents = p < .12 ? 'auto' : 'none';
     const digits = $('digits');
-    const fit = Math.min(1, (innerWidth - (innerWidth < 520 ? 32 : 80)) / Math.max(digits.scrollWidth, 1));
+    const availableWidth = story.clientWidth || innerWidth;
+    const fit = Math.min(1, (availableWidth - (availableWidth < 520 ? 32 : 80)) / Math.max(digits.scrollWidth, 1));
     root.style.setProperty('--clock-fit', fit.toFixed(5));
     $('scroll-cue').hidden = progress > .1 || zoom > .1 || document.body.classList.contains('focus-mode');
     if (zoom !== zoomTarget || zoomReset || !motion.matches && scene !== eased) requestPaint();
@@ -478,7 +487,7 @@ function installScrollScene() {
     if (performance.now() - previousPaint > 100) previousPaint = performance.now() - 16;
     frame = requestAnimationFrame(paint);
   }
-  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select');
+  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select,.letters-dock');
   function advanceView(delta, scrollScale = 1) {
     const now = performance.now(), elapsed = now - lastZoomInput;
     const next = explorationInput(zoomTarget, delta, elapsed > 220 ? 40 : elapsed);
@@ -523,10 +532,14 @@ function installScrollScene() {
   addEventListener('pageshow', requestPaint);
   motion.addEventListener('change', requestPaint);
   new ResizeObserver(requestPaint).observe($('digits'));
+  new ResizeObserver(requestPaint).observe(story);
   new MutationObserver(requestPaint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   paint();
 }
 initialize();
+lettersUI = mountLetters({getContext:()=>({room,record:cloudRecord}),openSharing:()=>$('share-button').click(),notify:toast});
+// Opening a different personal fragment must also switch the verified identity.
+addEventListener('hashchange', () => location.reload());
 installScrollScene();
 import('./globe-3d.js').then(async ({ mountGlobe }) => {
   globe3d = await mountGlobe($('flight-visual'));

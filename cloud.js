@@ -57,6 +57,7 @@ export class CloudClient {
       });
       const data = await response.json();
       if (!response.ok) {
+        if (name === 'youqi_letters' && data.code === 'P0001') throw new CloudError('稍等三秒，再留下下一句话。草稿已保留。', 'RATE');
         if (data.code === 'PGRST202' || data.code === 'PGRST205') throw new CloudError('云端数据库尚未初始化，请先执行项目中的初始化 SQL。', 'SETUP');
         if (data.code === '40001') throw new CloudError('对方刚刚更新了倒计时，请关闭编辑窗口，查看最新内容后再修改。', 'CONFLICT');
         if (response.status === 401 || response.status === 403 || data.code === '42501') throw new CloudError('共享链接无效、已失效，或没有编辑权限。', 'ACCESS');

@@ -54,8 +54,9 @@ export function mountSurfaceProgress(world, container) {
       const planeNormal = planeWorld.clone().normalize(), planeFacing = planeNormal.dot(toCamera.copy(camera.position).sub(planeWorld).normalize());
       const p = planeWorld.clone().project(camera), center = new THREE.Vector3().project(camera);
       const edge = new THREE.Vector3(1, 0, 0).project(camera), rect = container.getBoundingClientRect(), scale = rect.width / container.clientWidth;
-      const width = container.clientWidth, height = container.clientHeight, half = innerWidth < 520 ? 80 : 104;
-      const left = Math.max(half + 8, (12 - rect.left) / scale + half), right = Math.min(width - half - 8, (innerWidth - 12 - rect.left) / scale - half);
+      const stage = container.closest('.journey-scene')?.getBoundingClientRect() || {left:0,right:innerWidth};
+      const width = container.clientWidth, height = container.clientHeight, half = beacon.offsetWidth / 2;
+      const left = Math.max(half + 8, (Math.max(0,stage.left) + 12 - rect.left) / scale + half), right = Math.min(width - half - 8, (Math.min(innerWidth,stage.right) - 12 - rect.left) / scale - half);
       const top = Math.max(24, (16 - rect.top) / scale + 24), bottom = Math.min(height - 24, (innerHeight * .72 - 16 - rect.top) / scale - 24);
       const position = aircraftBeacon({ x: (p.x + 1) * width / 2, y: (1 - p.y) * height / 2 }, { x: (center.x + 1) * width / 2, y: (1 - center.y) * height / 2 }, Math.abs(edge.x - center.x) * width * .49, planeFacing > .08, { left, right: Math.max(left, right), top, bottom: Math.max(top, bottom) });
       beacon.style.left = `${position.x}px`; beacon.style.top = `${position.y}px`; beacon.style.color = color;
