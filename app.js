@@ -3,7 +3,7 @@ import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validate
 import { mountFlight, flightStage } from './flight.js';
 import { mountFlipClock } from './flip-clock.js';
 import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js';
-import { mountLetters } from './letters-ui.js';
+import { mountLetters } from './letters-ui.js?v=20261021-ime2';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';

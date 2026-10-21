@@ -52,5 +52,6 @@ body{--letters-space:0px;--letters-column:clamp(248px,29vw,380px)}
 @media(hover:hover) and (pointer:fine) and (max-width:700px){body:not(.letters-sidebar-open) .header{width:calc(100% - 40px)}}
 @media(hover:hover) and (pointer:fine) and (max-width:520px){.journey-stage .flight-visual.globe-3d{width:calc((100vw - var(--letters-space))*1.22)}}
 body.focus-mode .letters-backdrop{display:none!important}
+.letters-dock.is-editing .letters-close{display:grid!important}
 .letters-sidebar-open .flight-progress-beacon{max-width:calc(100vw - var(--letters-space) - 16px)}
 @media(prefers-reduced-motion:reduce){.app-shell,.header,.journey-stage .flight-visual.globe-3d,.letters-panel{transition:none}}

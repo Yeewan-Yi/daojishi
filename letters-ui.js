@@ -13,7 +13,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   window.visualViewport?.addEventListener('scroll',fitKeyboard);
   fitKeyboard();
   let opened=false, closing, timer, busy=false, fetching=false, booting=false, contextKey='', identity=null, pair=null, pendingPair=null;
-  let editorActive=false, composing=false;
+  let editorActive=false, composing=false, imeSettling=false, imeTimer;
   let items=[], cursor=null, revision=-1, latestOther=0, edit=null, sendId=crypto.randomUUID(), seen=0, pendingRevision=null, names='', view='loading';
   let explicit=null, invalidIdentity=false;
   try { explicit=identityFromHash(location.hash); } catch { invalidIdentity=true; }
@@ -26,9 +26,10 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
     $('letters-links-button').hidden=!identity || !['book','links'].includes(next);
     for(const name of ['loading','local','setup','identity','book','links']) $('letters-'+name).hidden=name!==next;
   }
+  function setEditing(value){editorActive=value;dock.classList.toggle('is-editing',value);}
   function setOpen(value) {
     clearTimeout(closing); opened=value;
-    if(!value){editorActive=false;composing=false;}
+    if(!value){setEditing(false);composing=false;imeSettling=false;clearTimeout(imeTimer);}
     dock.classList.toggle('is-open',value); panel.inert=!value; trigger.setAttribute('aria-expanded',String(value));
     document.body.classList.toggle('letters-sidebar-open',value && fine.matches);
     $('letters-backdrop').hidden=!value || fine.matches;
@@ -42,25 +43,34 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   dock.addEventListener('pointerenter',event=>{if(fine.matches && event.pointerType!=='touch')setOpen(true);});
   dock.addEventListener('pointerleave',event=>{if(fine.matches && event.pointerType!=='touch')closeWhenIdle();});
   dock.addEventListener('focusin',event=>{
-    editorActive=isEditor(event.target);
+    // This is a session latch, not a reflection of transient native-window focus.
+    if(isEditor(event.target))setEditing(true);
     if(fine.matches && event.target!==trigger)setOpen(true);
   });
-  dock.addEventListener('focusout',event=>{
-    // IME candidate windows may report a null relatedTarget. Keep the editing
-    // session until a real outside click, another focused control, or explicit close.
-    if(event.relatedTarget&&!dock.contains(event.relatedTarget))editorActive=false;
+  dock.addEventListener('focusout',()=>{
+    // Native candidate windows can report body, another control, or null as the
+    // next focus target. None of these alone means the user finished editing.
     if(fine.matches)closeWhenIdle(160);
   });
-  dock.addEventListener('compositionstart',()=>{composing=true;clearTimeout(closing);});
-  dock.addEventListener('compositionend',()=>{composing=false;if(fine.matches&&!editorActive)closeWhenIdle();});
+  dock.addEventListener('compositionstart',()=>{setEditing(true);composing=true;imeSettling=false;clearTimeout(imeTimer);clearTimeout(closing);});
+  dock.addEventListener('compositionend',()=>{
+    composing=false;imeSettling=true;clearTimeout(imeTimer);
+    // Some IMEs commit before forwarding the candidate's mouse/escape event.
+    imeTimer=setTimeout(()=>{imeSettling=false;},500);
+  });
   document.addEventListener('pointerdown',event=>{
-    if(opened&&!dock.contains(event.target)){editorActive=false;if(fine.matches)closeWhenIdle();}
+    if(opened&&!dock.contains(event.target)&&!composing&&!imeSettling&&document.hasFocus?.()!==false){setEditing(false);if(fine.matches)closeWhenIdle();}
   },true);
   trigger.addEventListener('click',event=>{if(!fine.matches || event.detail===0)setOpen(!opened);});
   $('letters-close').addEventListener('click',()=>{setOpen(false);trigger.focus({preventScroll:true});});
   $('letters-backdrop').addEventListener('click',()=>setOpen(false));
-  addEventListener('keydown',event=>{if(event.key==='Escape'&&opened){event.stopImmediatePropagation();if(event.isComposing||event.keyCode===229||composing)return;setOpen(false);trigger.focus({preventScroll:true});}},true);
-  fine.addEventListener('change',()=>setOpen(false));
+  addEventListener('keydown',event=>{
+    if(event.key==='Tab'&&opened&&!event.isComposing&&!composing)setTimeout(()=>{
+      if(!dock.contains(document.activeElement)){setEditing(false);if(fine.matches)closeWhenIdle(160);}
+    },0);
+    if(event.key==='Escape'&&opened){event.stopImmediatePropagation();if(event.isComposing||event.keyCode===229||composing||imeSettling)return;setOpen(false);trigger.focus({preventScroll:true});}
+  },true);
+  fine.addEventListener('change',()=>{if(!editorActive&&!composing)setOpen(false);});
   $('letters-enable-cloud').addEventListener('click',()=>{setOpen(false);openSharing();});
   $('letters-retry').addEventListener('click',()=>{contextKey='';sync();});
   $('letters-updates').addEventListener('click',()=>load(false));

@@ -53,17 +53,39 @@ test('clicking outside releases editing protection and restores automatic closin
 });
 test('tabbing away releases protection, and ordinary hover viewing still closes on leave',t=>{
   const ui=notebook(t);ui.open();ui.editor.focus();ui.leave();
-  emit(ui.dock,'focusout',{target:ui.editor,relatedTarget:ui.get('outside')});ui.tick(300);assert.equal(ui.expanded(),false);
+  emit(ui.window,'keydown',{key:'Tab'});ui.document.activeElement=ui.get('outside');
+  emit(ui.dock,'focusout',{target:ui.editor,relatedTarget:ui.get('outside')});ui.tick(1);ui.tick(300);assert.equal(ui.expanded(),false);
   ui.open();ui.leave();ui.tick(300);assert.equal(ui.expanded(),false);
 });
 test('Escape cancels IME selection without closing; a later Escape can explicitly close',t=>{
   const ui=notebook(t);ui.open();ui.editor.focus();emit(ui.dock,'compositionstart');
   const cancel=emit(ui.window,'keydown',{key:'Escape',isComposing:true});
   assert.equal(cancel.defaultPrevented,false);assert.equal(ui.expanded(),true);
-  emit(ui.dock,'compositionend');emit(ui.window,'keydown',{key:'Escape',isComposing:false});assert.equal(ui.expanded(),false);
+  emit(ui.dock,'compositionend');ui.tick(600);emit(ui.window,'keydown',{key:'Escape',isComposing:false});assert.equal(ui.expanded(),false);
 });
 test('Ctrl+Enter during composition never submits an unfinished message',t=>{
   const ui=notebook(t);ui.open();ui.editor.focus();emit(ui.dock,'compositionstart');
   emit(ui.editor,'keydown',{key:'Enter',ctrlKey:true,isComposing:true});assert.equal(ui.get('letter-form').submits,0);
   emit(ui.dock,'compositionend');emit(ui.editor,'keydown',{key:'Enter',ctrlKey:true,isComposing:false});assert.equal(ui.get('letter-form').submits,1);
+});
+
+test('native IME focus moving to body or a proxy control does not end the editing session',t=>{
+  const ui=notebook(t);ui.open();ui.editor.focus();ui.leave();
+  ui.document.activeElement=ui.get('outside');
+  emit(ui.dock,'focusout',{target:ui.editor,relatedTarget:ui.get('outside')});ui.tick(300);
+  assert.equal(ui.expanded(),true);
+  emit(ui.dock,'focusin',{target:ui.get('letters-links-button')});ui.leave();ui.tick(500);
+  assert.equal(ui.expanded(),true);
+});
+test('candidate mouse events before and immediately after composition commit cannot close the notebook',t=>{
+  const ui=notebook(t);ui.open();ui.editor.focus();ui.leave();emit(ui.dock,'compositionstart');
+  emit(ui.document,'pointerdown',{target:ui.get('outside')});ui.tick(300);assert.equal(ui.expanded(),true);
+  emit(ui.dock,'compositionend');emit(ui.document,'pointerdown',{target:ui.get('outside')});
+  emit(ui.window,'keydown',{key:'Escape',isComposing:false});ui.tick(600);assert.equal(ui.expanded(),true);
+  emit(ui.document,'pointerdown',{target:ui.get('outside')});ui.tick(300);assert.equal(ui.expanded(),false);
+});
+test('native-window mouse forwarding while the document lacks focus cannot end editing',t=>{
+  const ui=notebook(t);ui.open();ui.editor.focus();ui.leave();ui.document.hasFocus=()=>false;
+  emit(ui.document,'pointerdown',{target:ui.get('outside')});ui.tick(300);assert.equal(ui.expanded(),true);
+  ui.document.hasFocus=()=>true;emit(ui.document,'pointerdown',{target:ui.get('outside')});ui.tick(300);assert.equal(ui.expanded(),false);
 });
