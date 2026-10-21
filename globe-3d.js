@@ -1,16 +1,16 @@
 import * as THREE from './vendor/three.module.js';
 import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261021-chuanshu';
-import { mountSurfaceProgress } from './globe-labels.js?v=20261021-chuanshu';
+import { mountSurfaceProgress } from './globe-labels.js?v=20261021-clear';
 
-const lightPalette = { ocean: '#d3e1d8', land: '#a8bc9b', coast: '#9aaf92', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
-const darkPalette = { ocean: '#293e3b', land: '#6c8065', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
+const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
+const darkPalette = { ocean: '#243b37', land: '#74886a', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
 const vector = values => new THREE.Vector3(...values);
 
 function canvasTexture(canvas, color = false) {
   const texture = new THREE.CanvasTexture(canvas);
   if (color) texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping; texture.offset.x = .3;
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
   return texture;
 }
 
@@ -71,16 +71,18 @@ function surfaceMaps(data) {
 }
 function earthTexture(data, palette, details) {
   const canvas = document.createElement('canvas');
-  canvas.width = 2048; canvas.height = 1024;
+  canvas.width = innerWidth < 600 ? 2048 : 4096; canvas.height = canvas.width / 2;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = palette.ocean; ctx.fillRect(0,0,canvas.width,canvas.height);
-  const land = document.createElement('canvas');land.width=canvas.width;land.height=canvas.height;
-  const ink=land.getContext('2d');ink.drawImage(details.mask,0,0,land.width,land.height);
-  ink.globalCompositeOperation='source-in';ink.fillStyle=palette.land;ink.fillRect(0,0,land.width,land.height);
-  ctx.drawImage(land,0,0);
-  ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.48;ctx.drawImage(details.tint,0,0,canvas.width,canvas.height);
+  // Draw coastlines at the final resolution; never enlarge the relief mask into the color map.
+  ctx.fillStyle=palette.land;
+  for(const feature of data.features) {
+    const polygons=feature.geometry.type==='Polygon'?[feature.geometry.coordinates]:feature.geometry.coordinates;
+    for(const polygon of polygons){ctx.beginPath();for(const ring of polygon){ring.forEach(([lon,lat],i)=>{const x=(lon+180)/360*canvas.width,y=(90-lat)/180*canvas.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();}ctx.fill('evenodd');}
+  }
+  ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.12;ctx.drawImage(details.tint,0,0,canvas.width,canvas.height);
   ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
-  ctx.strokeStyle=palette.coast;ctx.lineWidth=.55;ctx.globalAlpha=.4;
+  ctx.strokeStyle=palette.coast;ctx.lineWidth=canvas.width/2048*.65;ctx.globalAlpha=.65;
   for(const feature of data.features) {
     const polygons=feature.geometry.type==='Polygon'?[feature.geometry.coordinates]:feature.geometry.coordinates;
     for(const polygon of polygons){ctx.beginPath();for(const ring of polygon){ring.forEach(([lon,lat],i)=>{const x=(lon+180)/360*canvas.width,y=(90-lat)/180*canvas.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();}ctx.stroke();}
@@ -140,7 +142,7 @@ export async function mountGlobe(container) {
     data = await response.json();
   } catch { renderer.dispose(); return null; }
 
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, innerWidth < 600 ? 1.5 : 1.8));
+  renderer.setPixelRatio(Math.min(2, Math.max(1.5, devicePixelRatio || 1)));
   renderer.setClearColor(0, 0); renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.04;
   const canvas = renderer.domElement;
@@ -152,12 +154,12 @@ export async function mountGlobe(container) {
   const ambient = new THREE.HemisphereLight('#f6f7ed', '#759478', 2); scene.add(ambient);
   const sun = new THREE.DirectionalLight('#fff5df', 2.3); sun.position.set(-3, 4, 5); scene.add(sun);
   const rim = new THREE.DirectionalLight('#b3d2cc', 1.1); rim.position.set(3, 1, -2); scene.add(rim);
-  const sphereMaterial = new THREE.MeshPhysicalMaterial({ roughness: .93, metalness: .015, ior: 1.33, specularIntensity: .48 });
+  const sphereMaterial = new THREE.MeshPhysicalMaterial({ roughness: .93, metalness: .015, ior: 1.33, specularIntensity: .18 });
   const initialTheme = document.documentElement.dataset.theme === 'dark' ? 1 : 0;
   const themeUniform = { value: initialTheme };
   const details = surfaceMaps(data);
   const dayTexture = earthTexture(data, lightPalette, details), nightTexture = earthTexture(data, darkPalette, details);
-  sphereMaterial.bumpMap = details.relief; sphereMaterial.bumpScale = .042;
+  sphereMaterial.bumpMap = details.relief; sphereMaterial.bumpScale = .014;
   sphereMaterial.roughnessMap = details.roughness;
   sphereMaterial.map = dayTexture;
   sphereMaterial.onBeforeCompile = shader => {
@@ -237,7 +239,7 @@ export async function mountGlobe(container) {
     rim.position.set(3 + themeMix * .2, 1 - themeMix * .6, -2 + themeMix * .8);
     atmosphere.uniforms.strength.value = .28 + themeMix * .07;
     atmosphere.uniforms.sunDirection.value.copy(sun.position).normalize();
-    cloudMaterial.opacity = THREE.MathUtils.lerp(.16,.075,themeMix);
+    cloudMaterial.opacity = THREE.MathUtils.lerp(.035,.018,themeMix);
     gridMaterial.opacity = THREE.MathUtils.lerp(.10,.085,themeMix);
     sphereMaterial.roughness = .93 - themeMix * .04;
     renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .88, themeMix);

@@ -13,8 +13,9 @@ export function mountSurfaceProgress(world, container) {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geometry.setIndex(indices);
-  const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 320;
+  const canvas = document.createElement('canvas'); canvas.width = 2048; canvas.height = 640;
   const context = canvas.getContext('2d'), texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+  context.scale(2,2); texture.anisotropy=8;
   const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 });
   const mesh = new THREE.Mesh(geometry, material); world.add(mesh);
   const beacon = document.createElement('div'); beacon.className = 'flight-progress-beacon'; beacon.setAttribute('aria-hidden', 'true');
