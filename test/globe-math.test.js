@@ -107,6 +107,29 @@ test('reset takes at most half a turn even after many rotations in either direct
   }
 });
 
+test('reset wraps both axes after crossing the poles many times without changing the visible pose', () => {
+  const homeYaw = .32, homePitch = .12;
+  for (const turns of [-100, -9, -1, 1, 7, 100]) for (const offset of [-3.13, -.8, 0, .8, 3.13]) {
+    const fromYaw = homeYaw - turns * Math.PI * 2 - offset;
+    const fromPitch = homePitch + turns * Math.PI * 2 + offset;
+    const start = resetPose(fromYaw, fromPitch, homeYaw, homePitch, 0);
+    close(Math.cos(start.pitch), Math.cos(fromPitch));
+    close(Math.sin(start.pitch), Math.sin(fromPitch));
+    close(start.pitch, homePitch + offset);
+    let previous = Infinity;
+    for (let step = 0; step <= 100; step++) {
+      const pose = resetPose(fromYaw, fromPitch, homeYaw, homePitch, step / 100);
+      const distance = Math.abs(pose.pitch - homePitch);
+      assert.ok(distance <= Math.PI && distance <= previous + 1e-9);
+      previous = distance;
+    }
+    const halfway = resetPose(fromYaw, fromPitch, homeYaw, homePitch, .5);
+    const restart = resetPose(halfway.yaw, halfway.pitch, homeYaw, homePitch, 0);
+    close(restart.yaw, halfway.yaw); close(restart.pitch, halfway.pitch);
+    assert.deepEqual(resetPose(fromYaw, fromPitch, homeYaw, homePitch, 1), {yaw:homeYaw, pitch:homePitch});
+  }
+});
+
 test('reset eases away and settles without overshoot, and can restart from its visible pose', () => {
   const from = .32 + 12 * Math.PI + 2;
   let previous = Infinity;

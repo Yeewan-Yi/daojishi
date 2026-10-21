@@ -2,7 +2,7 @@ import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdo
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js?v=20261021-chuanshu';
 import { mountFlipClock } from './flip-clock.js';
-import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261021-chuanshu';
+import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261021-free-orbit';
 import { mountLetters } from './letters-ui.js?v=20261021-experience';
 import {startBoot} from './boot.js?v=20261021-experience';
 import {openModal,closeModal,bindModalMotion} from './motion.js?v=20261021-experience';
@@ -503,7 +503,7 @@ lettersUI = mountLetters({getContext:()=>({room,record:cloudRecord}),openSharing
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-const globeReady=import('./globe-3d.js?v=20261021-clear').then(async ({ mountGlobe }) => {
+const globeReady=import('./globe-3d.js?v=20261021-free-orbit').then(async ({ mountGlobe }) => {
   boot.advance(.65);
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;

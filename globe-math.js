@@ -80,7 +80,8 @@ export function resetPose(fromYaw, fromPitch, homeYaw, homePitch, progress) {
   if (t === 1) return { yaw: homeYaw, pitch: homePitch };
   const eased = easeViewReset(t);
   const startYaw = nearestAngle(fromYaw, homeYaw);
-  return { yaw: startYaw + (homeYaw - startYaw) * eased, pitch: fromPitch + (homePitch - fromPitch) * eased };
+  const startPitch = nearestAngle(fromPitch, homePitch);
+  return { yaw: startYaw + (homeYaw - startYaw) * eased, pitch: startPitch + (homePitch - startPitch) * eased };
 }
 
 export function routeTangent(progress) {

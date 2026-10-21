@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261021-chuanshu';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261021-free-orbit';
 import { mountSurfaceProgress } from './globe-labels.js?v=20261021-clear';
 
 const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
@@ -303,7 +303,8 @@ export async function mountGlobe(container) {
     if (drag.touch && !dragging && (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.2)) return;
     touched = true; dragging = true; canvas.classList.add('is-dragging');
     const scale = 4 / container.getBoundingClientRect().width;
-    targetYaw = drag.yaw + dx * scale; targetPitch = Math.max(-.75, Math.min(.8, drag.pitch + (drag.touch ? 0 : dy * scale * .7)));
+    // Keep angles continuous across the poles and date line; only reset wraps them.
+    targetYaw = drag.yaw + dx * scale; targetPitch = drag.pitch + dy * scale * .7;
     container.dataset.rotated = 'true'; invalidate();
   });
   function stopDrag() { drag = null; dragging = false; canvas.classList.remove('is-dragging'); }
@@ -331,7 +332,7 @@ export async function mountGlobe(container) {
     if (event.key === 'Home') reset({preserveZoom:cameraZoom>.1});
     else if (event.key === 'ArrowLeft') targetYaw -= .18;
     else if (event.key === 'ArrowRight') targetYaw += .18;
-    else targetPitch = Math.max(-.75, Math.min(.8, targetPitch + (event.key === 'ArrowUp' ? -.12 : .12)));
+    else targetPitch += event.key === 'ArrowUp' ? -.12 : .12;
     container.dataset.rotated = event.key === 'Home' ? 'false' : 'true'; invalidate();
   });
   canvas.addEventListener('blur', () => canvas.classList.remove('is-pointer-focus'));
