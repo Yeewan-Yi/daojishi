@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, easeViewReset, globeCameraDistance, trackballPoint, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261021-trackball';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-bounded-rotation';
 import { mountSurfaceProgress } from './globe-labels.js?v=20261021-clear';
 
 const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
@@ -284,18 +284,13 @@ export async function mountGlobe(container) {
   route.add(shadow);
 
   const homeYaw = .32, homePitch = .12;
-  const homeOrientation = new THREE.Quaternion().setFromEuler(new THREE.Euler(homePitch, homeYaw, -.07));
-  const orientation = homeOrientation.clone(), targetOrientation = homeOrientation.clone();
-  const spin = new THREE.Quaternion(), idleRotation = new THREE.Quaternion(), idleEuler = new THREE.Euler();
-  const screenX = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-  const screenY = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
   const dayColors = {}, nightColors = {}, palette = {};
   for (const key of Object.keys(lightPalette)) {
     dayColors[key] = new THREE.Color(lightPalette[key]); nightColors[key] = new THREE.Color(darkPalette[key]);
     palette[key] = dayColors[key].clone().lerp(nightColors[key], initialTheme);
   }
   let themeMix = initialTheme, themeFrom = initialTheme, themeTarget = initialTheme, themeStarted = 0;
-  let progress = 0, phase = 'pending', scroll = 0;
+  let progress = 0, phase = 'pending', scroll = 0, targetYaw = homeYaw, targetPitch = homePitch, yaw = homeYaw, pitch = homePitch;
   let drag = null, touched = false, dragging = false, zoomChanging = false, cameraZoom = 0, frame = 0, lastFrame = 0, visible = !document.hidden;
   let resetting = null, idleMix = 0;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -341,26 +336,25 @@ export async function mountGlobe(container) {
     frame = 0;
     if (!visible || canvas.dataset.contextLost === 'true') return;
     const themeMoving = updateTheme(now);
-    const settled = !resetting && orientation.angleTo(targetOrientation) < .0002;
+    const settled = !resetting && Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) < .0002;
     if (!dragging && !zoomChanging && settled && !themeMoving && !motion.matches && now - lastFrame < 32) { frame = requestAnimationFrame(draw); return; }
     const delta = Math.min((now - lastFrame) / 1000 || .016, .1); lastFrame = now;
     const follow = 1 - Math.exp(-delta * 12);
     if (resetting) {
       const t = motion.matches ? 1 : Math.min(1, (now - resetting.started) / VIEW_RESET_DURATION);
-      orientation.slerpQuaternions(resetting.orientation, homeOrientation, easeViewReset(t));
+      ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, t));
       if (t === 1) { resetting = null; touched = false; }
     } else {
-      if (motion.matches) orientation.copy(targetOrientation);
-      else orientation.slerp(targetOrientation, follow);
+      yaw = motion.matches ? targetYaw : yaw + (targetYaw - yaw) * follow;
+      pitch = motion.matches ? targetPitch : pitch + (targetPitch - pitch) * follow;
     }
     const idle = !touched && !motion.matches && scroll < .9;
     idleMix = motion.matches ? 0 : idleMix + ((idle ? 1 : 0) - idleMix) * follow;
-    idleRotation.setFromEuler(idleEuler.set(Math.sin(now / 19000) * .012 * idleMix, Math.sin(now / 23000) * .026 * idleMix, 0));
-    world.quaternion.copy(orientation).premultiply(idleRotation);
+    world.rotation.set(pitch + Math.sin(now / 19000) * .012 * idleMix, yaw + Math.sin(now / 23000) * .026 * idleMix, -.07);
     surfaceProgress.update({camera,plane,progress:progress*100,phase,scroll,color:palette.route.getStyle()});
     renderer.render(scene, camera);
     zoomChanging = false;
-    const moving = orientation.angleTo(targetOrientation) > .0002;
+    const moving = Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) > .0002;
     if (((idle || moving || dragging || resetting || idleMix > .0002) && scroll < .98) || themeMoving) frame = requestAnimationFrame(draw);
   }
   function invalidate() { if (!frame && visible) frame = requestAnimationFrame(draw); }
@@ -371,19 +365,11 @@ export async function mountGlobe(container) {
     if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
     renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); invalidate();
   }
-  function pointerOnBall(x, y) {
-    const rect = canvas.getBoundingClientRect();
-    const center = new THREE.Vector3().project(camera);
-    const radius = rect.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.sqrt(camera.position.lengthSq() - 1));
-    return vector(trackballPoint((x - rect.left - (center.x + 1) * rect.width / 2) / radius, (rect.top + (1 - center.y) * rect.height / 2 - y) / radius));
-  }
   canvas.addEventListener('pointerdown', event => {
     if (scroll > .5 || event.button && event.pointerType === 'mouse') return;
     interruptReset();
     canvas.classList.add('is-pointer-focus');
-    // Begin at the pose actually on screen, including any unfinished damping.
-    orientation.copy(world.quaternion); targetOrientation.copy(orientation); idleMix = 0;
-    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, point: pointerOnBall(event.clientX, event.clientY), touch: event.pointerType !== 'mouse' };
+    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, yaw: targetYaw, pitch: targetPitch, touch: event.pointerType !== 'mouse' };
     dragging = false; canvas.setPointerCapture(event.pointerId);
     if (!drag.touch) canvas.focus({ preventScroll: true });
   });
@@ -392,25 +378,22 @@ export async function mountGlobe(container) {
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
     if (drag.touch && !dragging && (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.2)) return;
     touched = true; dragging = true; canvas.classList.add('is-dragging');
-    const point = pointerOnBall(event.clientX, event.clientY);
-    spin.setFromUnitVectors(drag.point, point);
-    spin.premultiply(camera.quaternion).multiply(camera.quaternion.clone().invert());
-    targetOrientation.premultiply(spin).normalize();
-    drag.point.copy(point);
+    const scale = 4 / container.getBoundingClientRect().width;
+    targetYaw = drag.yaw + dx * scale; targetPitch = Math.max(-.75, Math.min(.8, drag.pitch + (drag.touch ? 0 : dy * scale * .7)));
     container.dataset.rotated = 'true'; invalidate();
   });
   function stopDrag() { drag = null; dragging = false; canvas.classList.remove('is-dragging'); }
   canvas.addEventListener('pointerup', stopDrag); canvas.addEventListener('pointercancel', stopDrag); canvas.addEventListener('lostpointercapture', stopDrag);
   function interruptReset() {
     if (!resetting) return;
-    resetting = null; targetOrientation.copy(orientation); touched = true;
+    resetting = null; targetYaw = yaw; targetPitch = pitch; touched = true;
   }
   function reset({ preserveZoom = false } = {}) {
     stopDrag();
-    resetting = { orientation: world.quaternion.clone(), started: performance.now() };
+    resetting = { yaw: world.rotation.y, pitch: world.rotation.x, started: performance.now() };
     // Preserve the last rendered pose, including its subtle idle motion.
-    orientation.copy(resetting.orientation);
-    targetOrientation.copy(homeOrientation); touched = true; idleMix = 0;
+    ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, 0));
+    targetYaw = homeYaw; targetPitch = homePitch; touched = true; idleMix = 0;
     delete container.dataset.rotated;
     window.dispatchEvent(new CustomEvent('journey-view-reset', { detail: { started: resetting.started, preserveZoom } }));
     invalidate();
@@ -422,11 +405,9 @@ export async function mountGlobe(container) {
     if (event.key !== 'Home') interruptReset();
     touched = true;
     if (event.key === 'Home') reset({preserveZoom:cameraZoom>.1});
-    else {
-      const horizontal = event.key === 'ArrowLeft' || event.key === 'ArrowRight';
-      const angle = horizontal ? (event.key === 'ArrowLeft' ? -.18 : .18) : (event.key === 'ArrowUp' ? -.12 : .12);
-      targetOrientation.premultiply(spin.setFromAxisAngle(horizontal ? screenY : screenX, angle)).normalize();
-    }
+    else if (event.key === 'ArrowLeft') targetYaw -= .18;
+    else if (event.key === 'ArrowRight') targetYaw += .18;
+    else targetPitch = Math.max(-.75, Math.min(.8, targetPitch + (event.key === 'ArrowUp' ? -.12 : .12)));
     container.dataset.rotated = event.key === 'Home' ? 'false' : 'true'; invalidate();
   });
   canvas.addEventListener('blur', () => canvas.classList.remove('is-pointer-focus'));
