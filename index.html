@@ -12,8 +12,8 @@
   <link rel="stylesheet" href="./refined.css">
   <link rel="stylesheet" href="./scene.css">
   <link rel="stylesheet" href="./fonts.css">
-  <link rel="stylesheet" href="./letters.css?v=20261021-chuanshu">
-  <script type="module" src="./app.js?v=20261021-chuanshu"></script>
+  <link rel="stylesheet" href="./letters.css?v=20261021-glyphs">
+  <script type="module" src="./app.js?v=20261021-glyphs"></script>
 </head>
 <body>
   <svg xmlns="http://www.w3.org/2000/svg" class="svg-library" aria-hidden="true">
@@ -29,16 +29,21 @@
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/></symbol>
     <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4m-6 7-1 1a4.2 4.2 0 0 1-6-6l4-4a4.2 4.2 0 0 1 6 0m2 0 1-1a4.2 4.2 0 0 1 6 6l-4 4a4.2 4.2 0 0 1-6 0" transform="translate(1 1)"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="nav-moon" viewBox="0 0 32 32"><path d="M16 3 28 16 16 29 4 16Z"/><path d="M20 9a8 8 0 1 0 3 12A9 9 0 0 1 20 9Z"/><path d="m10 5 1-2m15 21 2 1"/></symbol>
+    <symbol id="nav-sun" viewBox="0 0 32 32"><path d="m16 3 12 13-12 13L4 16Z"/><circle cx="16" cy="16" r="5"/><path d="M16 7v2m0 14v2M7 16h2m14 0h2"/></symbol>
+    <symbol id="nav-focus" viewBox="0 0 32 32"><path d="M11 5H5v6m16-6h6v6M5 21v6h6m16-6v6h-6M16 9l7 7-7 7-7-7Z"/><circle cx="16" cy="16" r="1.5"/></symbol>
+    <symbol id="nav-edit" viewBox="0 0 32 32"><path d="M6 24v4h20v-4M9 22l2-7L23 3l5 5-12 12-7 2Zm11-16 5 5M11 15l5 5M5 8h7M8 5v6"/></symbol>
+    <symbol id="nav-share" viewBox="0 0 32 32"><path d="m16 3 5 5-5 5-5-5ZM5 20l5-5 5 5-5 5Zm12 0 5-5 5 5-5 5ZM16 13v3m-6-1 6-4 6 4M4 28h24"/></symbol>
   </svg>
 
   <div class="app-shell">
     <header class="header">
       <a class="brand" href="./" aria-label="有期首页"><span class="brand-mark"><svg><use href="#i-clock"/></svg></span><span>有期</span></a>
-      <div class="header-actions">
-        <button class="icon-button" id="theme-button" aria-label="切换深色模式" title="切换深色模式"><svg><use href="#i-moon"/></svg></button>
-        <button class="icon-button" id="focus-button" aria-label="进入专注模式" title="专注模式"><svg><use href="#i-expand"/></svg></button>
-        <button class="button button-quiet" id="edit-button" aria-label="编辑"><svg><use href="#i-edit"/></svg><span>编辑</span></button>
-        <button class="button button-quiet" id="share-button" aria-label="分享"><svg><use href="#i-share"/></svg><span>分享</span></button>
+      <div class="header-actions" role="group" aria-label="页面工具">
+        <button class="icon-button nav-tool" id="theme-button" aria-label="切换深色模式" data-label="切换深色模式"><svg aria-hidden="true"><use href="#nav-moon"/></svg></button>
+        <button class="icon-button nav-tool" id="focus-button" aria-label="进入专注模式" data-label="专注"><svg aria-hidden="true"><use href="#nav-focus"/></svg></button>
+        <button class="icon-button nav-tool" id="edit-button" aria-label="编辑" data-label="编辑"><svg aria-hidden="true"><use href="#nav-edit"/></svg></button>
+        <button class="icon-button nav-tool" id="share-button" aria-label="分享" data-label="分享"><svg aria-hidden="true"><use href="#nav-share"/></svg></button>
       </div>
     </header>
 
@@ -87,7 +92,7 @@
       <div class="letters-view" id="letters-local" hidden><p>把这份期待连在一起，<br>就能留下只属于两个人的话。</p><button class="letters-primary" id="letters-enable-cloud">开启共同使用 <svg><use href="#i-arrow"/></svg></button></div>
       <div class="letters-view" id="letters-setup" hidden><p>两个人，一册往来的书信。</p><form id="letters-setup-form"><label for="letter-name-self">你的称呼<input id="letter-name-self" required maxlength="12" autocomplete="nickname" placeholder="怎么称呼你"></label><label for="letter-name-other">对方的称呼<input id="letter-name-other" required maxlength="12" autocomplete="off" placeholder="另一个重要的人"></label><button class="letters-primary" id="letters-create" type="submit">开始写下我们的故事 <svg><use href="#i-arrow"/></svg></button></form></div>
       <div class="letters-view" id="letters-identity" hidden><p>请用自己的传书专属链接打开，<br>这里会认得你，也记得你写下的话。</p><button class="letters-primary" id="letters-recover" hidden>查看已保存的专属链接 <svg><use href="#i-arrow"/></svg></button></div>
-      <div class="letters-view letters-book" id="letters-book" hidden><button class="letters-updates" id="letters-updates" hidden>书信有更新 · 回到最新</button><div class="letters-empty" id="letters-empty"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 31V9h24v22M8 13h24M14 20h12M14 25h8M5 33h30"/></svg>第一封信，写给你<span>写下这段等待中的小事</span></div><div class="letters-list" id="letters-list" aria-label="往来书信" tabindex="0"></div><button class="letters-older" id="letters-older" hidden>查看更早的书信</button><form class="letter-form" id="letter-form"><label for="letter-body" id="letter-composer-label">写下想说的话</label><textarea id="letter-body" rows="3" placeholder="今天，有什么想对你说的……" aria-describedby="letter-count"></textarea><div class="letter-form-footer"><span class="letter-count" id="letter-count">0 / 500</span><div><button type="button" class="letter-quiet" id="letter-cancel" hidden>取消修改</button><button type="submit" class="letters-primary" id="letter-send"><span id="letter-send-label">递函</span><svg><use href="#i-arrow"/></svg></button></div></div></form></div>
+      <div class="letters-view letters-book" id="letters-book" hidden><button class="letters-updates" id="letters-updates" hidden>书信有更新 · 回到最新</button><div class="letters-empty" id="letters-empty"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 31V9h24v22M8 13h24M14 20h12M14 25h8M5 33h30"/></svg>第一封信，写给你<span>写下这段等待中的小事</span></div><div class="letters-list" id="letters-list" aria-label="往来书信" tabindex="0"></div><button class="letters-older" id="letters-older" hidden>查看更早的书信</button><form class="letter-form" id="letter-form"><label for="letter-body" id="letter-composer-label">写下想说的话</label><textarea id="letter-body" rows="3" placeholder="今天，有什么想对你说的……" aria-describedby="letter-count"></textarea><div class="letter-form-footer"><span class="letter-count" id="letter-count">0 / 500</span><div><button type="button" class="letter-quiet" id="letter-cancel" hidden>取消修改</button><button type="submit" class="letters-primary" id="letter-send" disabled><span id="letter-send-label">递函</span><svg><use href="#i-arrow"/></svg></button></div></div></form></div>
       <div class="letters-view" id="letters-links" hidden><p class="letters-links-note">各自保存自己的链接，发给对方另一条。链接代表传书身份，请勿公开转发。</p><div id="letter-links"></div><button class="letters-primary" id="letters-links-done">返回传书 <svg><use href="#i-arrow"/></svg></button></div>
       <p class="letters-error" id="letters-error" role="alert"></p><button class="letter-quiet" id="letters-retry" hidden>重试连接</button>
     </section>

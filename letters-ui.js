@@ -2,7 +2,7 @@ import { LettersClient, createPair, identityFromHash, personalUrl, validateIdent
 
 export function mountLetters({getContext,openSharing,notify,client=new LettersClient()}) {
   const $=id=>document.getElementById(id), dock=$('letters-dock'), panel=$('letters-panel'), trigger=$('letters-trigger');
-  const fine=matchMedia('(hover:hover) and (pointer:fine)'), list=$('letters-list'), input=$('letter-body');
+  const fine=matchMedia('(min-width:601px) and (hover:hover) and (pointer:fine)'), list=$('letters-list'), input=$('letter-body');
   function fitKeyboard(){
     const viewport=window.visualViewport;
     if(!viewport)return;
@@ -31,7 +31,6 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
     clearTimeout(closing); opened=value;
     if(!value){setEditing(false);composing=false;imeSettling=false;clearTimeout(imeTimer);}
     dock.classList.toggle('is-open',value); panel.inert=!value; trigger.setAttribute('aria-expanded',String(value));
-    document.body.classList.toggle('letters-sidebar-open',value && fine.matches);
     $('letters-backdrop').hidden=!value || fine.matches;
     if(value) { sync(); if(view==='book' && list.scrollTop<24 && !pendingRevision) markRead(); }
   }
@@ -52,9 +51,9 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
     // next focus target. None of these alone means the user finished editing.
     if(fine.matches)closeWhenIdle(160);
   });
-  dock.addEventListener('compositionstart',()=>{setEditing(true);composing=true;imeSettling=false;clearTimeout(imeTimer);clearTimeout(closing);});
+  dock.addEventListener('compositionstart',()=>{setEditing(true);composing=true;imeSettling=false;clearTimeout(imeTimer);clearTimeout(closing);counter();});
   dock.addEventListener('compositionend',()=>{
-    composing=false;imeSettling=true;clearTimeout(imeTimer);
+    composing=false;imeSettling=true;clearTimeout(imeTimer);counter();
     // Some IMEs commit before forwarding the candidate's mouse/escape event.
     imeTimer=setTimeout(()=>{imeSettling=false;},500);
   });
@@ -86,16 +85,17 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   }
   function draftKey(){return key(edit?`edit.${edit.id}`:'draft');}
   function saveDraft(){put(draftKey(),input.value);}
-  function counter(){const length=[...input.value].length;$('letter-count').textContent=`${length} / 500`;$('letter-count').classList.toggle('is-over',length>500);}
+  function canSend(){return !busy && !composing && !!input.value.trim() && [...input.value.trim()].length<=500;}
+  function counter(){const length=[...input.value].length;$('letter-count').textContent=`${length} / 500`;$('letter-count').classList.toggle('is-over',length>500);$('letter-send').disabled=!canSend();}
   input.addEventListener('input',()=>{saveDraft();counter();});
-  input.addEventListener('keydown',event=>{if(!event.isComposing&&event.keyCode!==229&&!composing&&(event.ctrlKey||event.metaKey)&&event.key==='Enter'){$('letter-form').requestSubmit();event.preventDefault();}});
+  input.addEventListener('keydown',event=>{if(!event.isComposing&&event.keyCode!==229&&!composing&&(event.ctrlKey||event.metaKey)&&event.key==='Enter'){if(canSend())$('letter-form').requestSubmit();event.preventDefault();}});
   $('letter-cancel').addEventListener('click',()=>{
     saveDraft();edit=null;sendId=crypto.randomUUID();input.value=get(draftKey(),'');updateComposer();
   });
   function updateComposer(){
     $('letter-send-label').textContent=edit?'保存修改':'递函';$('letter-cancel').hidden=!edit;
     $('letter-composer-label').textContent=edit?'修改这封信':`执笔 · ${names}`;
-    $('letter-send').disabled=busy;input.disabled=busy;counter();
+    input.disabled=busy;counter();
   }
   function render() {
     list.replaceChildren();
@@ -206,7 +206,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   $('letters-recover').addEventListener('click',()=>{if(pair)showLinks();});
   $('letters-links-done').addEventListener('click',()=>{if(identity){revision=-1;load(false);}else setView('identity');});
   $('letter-form').addEventListener('submit',async event=>{
-    event.preventDefault();if(busy||!identity)return;busy=true;saveDraft();error('');updateComposer();
+    event.preventDefault();if(!canSend()||!identity)return;busy=true;saveDraft();error('');updateComposer();
     const oldEdit=edit, body=input.value;
     try{
       await client.write(getContext().room,identity,body,edit?.id||sendId,edit?.version??null);
@@ -221,6 +221,6 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   addEventListener('visibilitychange',()=>{if(!document.hidden)sync();});
   addEventListener('online',sync);
   addEventListener('storage',event=>{if(event.key?.startsWith('youqi.letters.')){seen=get(key('seen'),seen);unread();}});
-  panel.inert=true;sync();
+  panel.inert=true;counter();sync();
   return {refresh:sync,close:()=>setOpen(false)};
 }

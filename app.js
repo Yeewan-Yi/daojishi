@@ -1,9 +1,9 @@
-import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, encodeShare, decodeShare, toLocalInput } from './countdown.js';
+import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js?v=20261021-chuanshu';
 import { mountFlipClock } from './flip-clock.js';
 import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261021-chuanshu';
-import { mountLetters } from './letters-ui.js?v=20261021-chuanshu';
+import { mountLetters } from './letters-ui.js?v=20261021-glyphs';
 
 const $ = id => document.getElementById(id);
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -64,13 +64,14 @@ function setEditAccess() {
 function applyCloudRecord(next) {
   if (cloudRecord && next.version < cloudRecord.version) return;
   const changed = JSON.stringify(validateCountdown(next)) !== JSON.stringify(state);
+  const needsRender = changed || !cloudRecord;
   if ($('edit-dialog').open && cloudRecord && next.version !== cloudRecord.version) externalEdit = true;
   state = validateCountdown(next);
   cloudRecord = next;
   cloudCache = true;
   cacheCloud();
   setEditAccess();
-  renderMetadata();
+  if (needsRender) { renderMetadata(); tick(); }
   if ($('share-dialog').open) updateSharePanel();
   lettersUI?.refresh();
   return changed;
@@ -241,7 +242,7 @@ function renderTime() {
 function tick() {
   clearTimeout(tickTimeout);
   renderTime();
-  tickTimeout = setTimeout(tick, 1000 - Date.now() % 1000 + 15);
+  tickTimeout = setTimeout(tick, countdownDelay(state));
 }
 
 function openEdit(field = 'title-input') {
@@ -369,10 +370,10 @@ $('copy-button').addEventListener('click', async () => {
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  $('theme-button').querySelector('use').setAttribute('href', theme === 'dark' ? '#i-sun' : '#i-moon');
+  $('theme-button').querySelector('use').setAttribute('href', theme === 'dark' ? '#nav-sun' : '#nav-moon');
   const label = theme === 'dark' ? '切换浅色模式' : '切换深色模式';
   $('theme-button').setAttribute('aria-label', label);
-  $('theme-button').title = label;
+  $('theme-button').dataset.label = label;
   document.querySelector('meta[name=theme-color]').content = theme === 'dark' ? '#0b1210' : '#f5f6f2';
   if (pipWindow && !pipWindow.closed) pipWindow.document.documentElement.dataset.theme = theme;
 }

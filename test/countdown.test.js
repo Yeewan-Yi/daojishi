@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getCountdown, validateCountdown, encodeShare, decodeShare, defaultCountdown, toLocalInput } from '../countdown.js';
+import { getCountdown, countdownDelay, validateCountdown, encodeShare, decodeShare, defaultCountdown, toLocalInput } from '../countdown.js';
 
 const value = { title: '下一次见面 ✨', start: '2026-10-20T02:00:00.000Z', end: '2026-10-22T02:00:00.000Z' };
 test('before the start, count down to start and hold progress at zero', () => {
@@ -18,6 +18,25 @@ test('end boundary and sleep recovery never show negative time', () => {
 });
 test('round fractional seconds up instead of displaying zero early', () => {
   assert.equal(getCountdown(value, Date.parse(value.end) - 1).seconds, 1);
+});
+
+test('extra renders inside a visible second cannot move the percentage', () => {
+  const now = Date.parse(value.start) + 1234000;
+  const snapshot = getCountdown(value, now);
+  for (const offset of [1, 16, 400, 999]) assert.deepEqual(getCountdown(value, now + offset), snapshot);
+  const next = getCountdown(value, now + 1000);
+  assert.notEqual(next.seconds, snapshot.seconds);
+  assert.ok(next.progress > snapshot.progress);
+});
+
+test('fractional target timestamps schedule and sample the same countdown boundary', () => {
+  const fractional = { ...value, end: '2026-10-22T02:00:00.375Z' };
+  const boundary = Date.parse(fractional.end) - 10000;
+  assert.deepEqual(getCountdown(fractional, boundary - 999), getCountdown(fractional, boundary - 1));
+  assert.equal(countdownDelay(fractional, boundary - 250), 265);
+  assert.equal(countdownDelay(fractional, boundary), 1015);
+  assert.equal(getCountdown(fractional, boundary).seconds, 10);
+  assert.equal(getCountdown(fractional, boundary - 1).seconds, 11);
 });
 test('share roundtrip preserves Chinese, emoji and absolute times', () => {
   const token = encodeShare(value);

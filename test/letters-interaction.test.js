@@ -66,7 +66,20 @@ test('Escape cancels IME selection without closing; a later Escape can explicitl
 test('Ctrl+Enter during composition never submits an unfinished message',t=>{
   const ui=notebook(t);ui.open();ui.editor.focus();emit(ui.dock,'compositionstart');
   emit(ui.editor,'keydown',{key:'Enter',ctrlKey:true,isComposing:true});assert.equal(ui.get('letter-form').submits,0);
-  emit(ui.dock,'compositionend');emit(ui.editor,'keydown',{key:'Enter',ctrlKey:true,isComposing:false});assert.equal(ui.get('letter-form').submits,1);
+  ui.editor.value='想对你说的话';emit(ui.dock,'compositionend');emit(ui.editor,'keydown',{key:'Enter',ctrlKey:true,isComposing:false});assert.equal(ui.get('letter-form').submits,1);
+});
+
+test('delivery is disabled for empty, whitespace, oversized and composing drafts',t=>{
+  const ui=notebook(t), send=ui.get('letter-send');
+  assert.equal(send.disabled,true);
+  for(const text of ['   \n', '字'.repeat(501)]){
+    ui.editor.value=text;emit(ui.editor,'input');assert.equal(send.disabled,true);
+    emit(ui.editor,'keydown',{key:'Enter',ctrlKey:true});assert.equal(ui.get('letter-form').submits,0);
+  }
+  ui.editor.value='💌'.repeat(500);emit(ui.editor,'input');assert.equal(send.disabled,false);
+  emit(ui.dock,'compositionstart');assert.equal(send.disabled,true);
+  emit(ui.dock,'compositionend');assert.equal(send.disabled,false);
+  ui.editor.value='';emit(ui.editor,'input');assert.equal(send.disabled,true);
 });
 
 test('native IME focus moving to body or a proxy control does not end the editing session',t=>{

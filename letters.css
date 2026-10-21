@@ -17,41 +17,52 @@
 .letters-error{font-size:12px;line-height:1.7;color:var(--accent-strong);margin:0;flex-shrink:0;overflow-wrap:anywhere}.letters-error:not(:empty){padding-top:10px}.letter-link-field{display:flex;align-items:center;gap:12px}.letter-link-field input{font:12px 'Times New Roman',serif;min-width:0}.letter-link-field button{background:transparent;border:0;color:var(--accent-strong);font-size:12px;white-space:nowrap}.letters-links-note{font-size:12px!important}
 .letters-backdrop{display:none}body.focus-mode .letters-dock{display:none}
 .letters-dock [hidden]{display:none!important}
-@media(hover:hover) and (pointer:fine){.letters-close{display:none}.letters-dock:focus-within .letters-trigger{border-color:var(--accent)}}
+@media(min-width:601px) and (hover:hover) and (pointer:fine){.letters-close{display:none}.letters-dock:focus-within .letters-trigger{border-color:var(--accent)}}
 @media(hover:none),(pointer:coarse),(max-width:600px){.letters-dock{right:16px;bottom:max(18px,env(safe-area-inset-bottom));z-index:30}.letters-trigger{min-height:44px;padding:10px 13px}.letters-panel{position:fixed;bottom:0;left:0;right:0;width:100%;max-width:none;height:min(76svh,650px);max-height:calc(100dvh - 24px);border-radius:16px 16px 0 0;padding:25px 24px max(20px,env(safe-area-inset-bottom));transform:translateY(30px);box-shadow:0 -10px 60px #00000015}.letters-panel:before{top:9px;left:calc(50% - 17px);right:auto;width:34px;height:3px;border-radius:3px;background:var(--muted);opacity:.35}.letters-heading h2{font-size:22px}.letters-close{display:grid}.letters-backdrop:not([hidden]){display:block;position:fixed;inset:0;background:#00000025;z-index:29;backdrop-filter:blur(2px)}.letter-form textarea{height:84px;font-size:16px}.letter-entry .letter-text{font-size:17px}.letters-panel .letters-view input{font-size:16px}.letters-primary{min-height:40px}.letter-actions button{min-height:32px;padding:6px 2px}.letters-heading button{min-height:32px}}
 @media(prefers-reduced-motion:reduce){.letters-panel{transition:none}.letters-primary svg{transition:none}}
 @media(hover:none),(pointer:coarse),(max-width:600px){.letters-panel{bottom:var(--letters-keyboard-inset,0px);max-height:calc(var(--letters-available-height,100dvh) - 24px)}}
 
-/* A desktop notebook occupies its own column, including during the transition. */
-body{--letters-space:0px;--letters-column:clamp(248px,29vw,380px)}
+/* The notebook overlays the page without resizing the scene. */
+body{--letters-column:clamp(248px,29vw,380px)}
 .letters-trigger{border:0;border-radius:0;padding:10px 13px;gap:11px;background:color-mix(in srgb,var(--bg) 94%,transparent);box-shadow:none;letter-spacing:2px;position:relative;z-index:2;transition:color .2s ease,background-color .2s ease}
 .letters-trigger:before,.letters-trigger:after{content:'';position:absolute;width:9px;height:9px;border-color:color-mix(in srgb,var(--accent) 58%,transparent);border-style:solid;transition:width .25s ease,height .25s ease}
 .letters-trigger:before{left:0;top:0;border-width:1px 0 0 1px}.letters-trigger:after{right:0;bottom:0;border-width:0 1px 1px 0}.letters-trigger:hover:before,.letters-trigger:hover:after,.is-open .letters-trigger:before,.is-open .letters-trigger:after{width:15px;height:12px}
 .letters-trigger svg{width:22px;height:22px;stroke-width:1.1}.letters-trigger>span:not(.letters-unread){font-size:15px}.letters-unread{position:absolute;right:8px;top:7px;width:4px;height:4px;background:var(--accent-strong)}
 .letters-heading h2{font-size:23px;letter-spacing:3px}.letter-author{font-size:15px}.letter-entry .letter-text{line-height:1.95}.letter-actions button{font-size:12px}.letters-panel{background:linear-gradient(135deg,color-mix(in srgb,var(--bg) 97%,var(--accent)),var(--bg) 65%)}
-@media(hover:hover) and (pointer:fine){
-  body.letters-sidebar-open{--letters-space:var(--letters-column)}
-  .app-shell{width:calc(100% - var(--letters-space));margin:0;transition:width .32s cubic-bezier(.22,.65,.3,1)}
-  .header{left:calc((100% - var(--letters-space))/2);width:calc(100% - var(--letters-space) - 72px);transition:left .32s cubic-bezier(.22,.65,.3,1),width .32s cubic-bezier(.22,.65,.3,1)}
-  .journey-stage .flight-visual.globe-3d{width:min(calc((100vw - var(--letters-space))*.94),105svh);transition:width .32s cubic-bezier(.22,.65,.3,1)}
-  .letters-panel{position:fixed;left:auto;right:0;top:0;bottom:0;width:var(--letters-column);max-width:none;height:100svh;max-height:none;padding:30px 26px 87px;border:0;border-left:1px solid var(--line);border-radius:0;box-shadow:none;transform:translateX(100%);transition:transform .32s cubic-bezier(.22,.65,.3,1),opacity .25s ease,visibility .32s}
+@media(min-width:601px) and (hover:hover) and (pointer:fine){
+  .letters-panel{position:fixed;left:auto;right:0;top:0;bottom:0;width:var(--letters-column);max-width:none;height:100svh;max-height:none;padding:30px 26px 87px;border:0;border-left:1px solid var(--line);border-radius:0;box-shadow:-18px 0 65px #00000012;transform:translateX(100%);transition:transform .32s cubic-bezier(.22,.65,.3,1),opacity .25s ease,visibility .32s}
   .is-open .letters-panel{transform:translateX(0)}
   .letters-panel:before{left:0;right:auto;top:28px;bottom:28px;width:1px;height:auto;border-radius:0;background:linear-gradient(transparent,var(--accent),transparent);opacity:.26}
   .letters-close,.letters-backdrop{display:none!important}
   .letters-heading{padding-bottom:22px}.letter-entry{padding:24px 0 19px}.letter-form{padding-top:20px}.letter-form textarea{height:100px}
 }
-@media(hover:hover) and (pointer:fine) and (max-width:900px){
-  .letters-sidebar-open .header{width:calc(100% - var(--letters-space) - 28px);gap:3px}
-  .letters-sidebar-open .brand>span:last-child,.letters-sidebar-open .header-actions .button span,.letters-sidebar-open #float-button span{display:none}
-  .letters-sidebar-open .header-actions{gap:1px}.letters-sidebar-open .header-actions .button{width:30px;min-width:30px;padding:5px}
-  .letters-sidebar-open .header-actions .icon-button{width:30px;min-width:30px;padding:5px}.letters-sidebar-open .brand-mark{width:30px;height:30px}
+@media(min-width:601px) and (hover:hover) and (pointer:fine) and (max-width:900px){
   .letters-panel{padding-left:20px;padding-right:20px}.letters-heading h2{font-size:21px}.letters-heading-actions{gap:9px}.letters-heading button{font-size:11px}
   .letter-byline{flex-wrap:wrap;gap:5px}.letter-entry .letter-text{font-size:15px}.letters-panel .letter-form textarea{font-size:15px}
-  .letters-sidebar-open .countdown-reading{transform:translate(-50%,-50%) scale(calc((.75 + var(--scene-progress)*.25)*var(--clock-fit)))}
 }
-@media(hover:hover) and (pointer:fine) and (max-width:700px){body:not(.letters-sidebar-open) .header{width:calc(100% - 40px)}}
-@media(hover:hover) and (pointer:fine) and (max-width:520px){.journey-stage .flight-visual.globe-3d{width:calc((100vw - var(--letters-space))*1.22)}}
+
 body.focus-mode .letters-backdrop{display:none!important}
 .letters-dock.is-editing .letters-close{display:grid!important}
-.letters-sidebar-open .flight-progress-beacon{max-width:calc(100vw - var(--letters-space) - 16px)}
 @media(prefers-reduced-motion:reduce){.app-shell,.header,.journey-stage .flight-visual.globe-3d,.letters-panel{transition:none}}
+
+/* Geometric tools with captions outside the fixed button footprint. */
+.header-actions{gap:12px}
+.header .nav-tool{position:relative;isolation:isolate;width:40px;height:40px;min-width:40px;padding:6px;border:0;border-radius:0;background:transparent;color:var(--accent-strong);cursor:pointer;transition:color .22s ease,background-color .22s ease}
+.header .nav-tool svg{width:28px;height:28px;stroke-width:1.25;stroke-linecap:square;stroke-linejoin:miter;transition:transform .25s ease}
+.nav-tool:before{content:'';position:absolute;inset:1px;background:linear-gradient(var(--accent),var(--accent)) left top/8px 1px no-repeat,linear-gradient(var(--accent),var(--accent)) left top/1px 8px no-repeat,linear-gradient(var(--accent),var(--accent)) right bottom/8px 1px no-repeat,linear-gradient(var(--accent),var(--accent)) right bottom/1px 8px no-repeat;opacity:.24;transition:opacity .22s}
+.header .nav-tool:hover,.header .nav-tool:focus-visible{background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--text)}
+.nav-tool:hover:before,.nav-tool:focus-visible:before{opacity:1}
+.nav-tool:hover svg{transform:translateY(-1px)}
+.nav-tool:after{content:attr(data-label);position:absolute;right:0;top:calc(100% + 7px);padding:5px 9px;border-left:1px solid var(--accent);background:color-mix(in srgb,var(--bg) 96%,transparent);color:var(--accent-strong);font:inherit;font-size:13px;line-height:1.5;letter-spacing:1px;white-space:nowrap;pointer-events:none;opacity:0;transform:translateY(-3px);transition:opacity .18s ease,transform .18s ease}
+.nav-tool:hover:after,.nav-tool:focus-visible:after{opacity:1;transform:translateY(0)}
+.header .nav-tool:disabled{opacity:.4;cursor:default}
+.header .nav-tool:disabled:hover{background:transparent}
+#letter-send{padding:8px 13px;border:1px solid transparent;border-radius:2px;background:transparent;transition:background-color .25s ease,border-color .25s ease,color .25s ease,opacity .25s ease}
+#letter-send svg{transition:transform .25s ease}
+#letter-send:disabled{opacity:.4;cursor:default;color:var(--muted)}
+#letter-send:disabled:hover svg{transform:none}
+#letter-send:not(:disabled){background:color-mix(in srgb,var(--accent) 14%,var(--bg));border-color:color-mix(in srgb,var(--accent) 25%,transparent);color:var(--accent-strong)}
+#letter-send:not(:disabled):hover{background:color-mix(in srgb,var(--accent) 22%,var(--bg))}
+@media(max-width:520px){.header-actions{gap:5px}.header .nav-tool{width:36px;min-width:36px;height:38px;padding:6px}.header .nav-tool svg{width:26px;height:26px}}
+@media(hover:none),(pointer:coarse),(max-width:600px){.letters-dock.is-open .letters-trigger{visibility:hidden;pointer-events:none}}
+@media(prefers-reduced-motion:reduce){.header .nav-tool,.header .nav-tool svg,.nav-tool:before,.nav-tool:after,#letter-send,#letter-send svg{transition:none}}

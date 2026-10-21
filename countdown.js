@@ -23,8 +23,16 @@ export function getCountdown(value, now = Date.now()) {
     hours: Math.floor(remaining / 3600) % 24,
     minutes: Math.floor(remaining / 60) % 60,
     seconds: remaining % 60,
-    progress: Math.min(100, Math.max(0, (now - start) / (end - start) * 100))
+    // Use the same second snapshot as the visible clock, including extra cloud renders.
+    progress: phase === 'ended' ? 100 : phase === 'upcoming' ? 0 : Math.min(100, Math.max(0, (end - remaining * 1000 - start) / (end - start) * 100))
   };
+}
+
+export function countdownDelay(value, now = Date.now()) {
+  const target = Date.parse(now < Date.parse(value.start) ? value.start : value.end);
+  if (now >= target) return 1000;
+  const remainder = ((target - now) % 1000 + 1000) % 1000;
+  return (remainder || 1000) + 15;
 }
 
 export function defaultCountdown(now = new Date()) {
