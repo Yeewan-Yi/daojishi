@@ -90,35 +90,111 @@ function earthTexture(data, palette, details) {
   return canvasTexture(canvas,true);
 }
 
-function makeAircraft() {
+export function makeAircraft() {
   const plane = new THREE.Group();
-  const white = new THREE.MeshStandardMaterial({ color: '#f6f7ed', roughness: .48, metalness: .12 });
-  const wing = new THREE.MeshStandardMaterial({ color: '#d6e1d1', roughness: .65, metalness: .14 });
-  const green = new THREE.MeshStandardMaterial({ color: '#55795c', roughness: .65 });
-  const glass = new THREE.MeshStandardMaterial({ color: '#476b69', roughness: .2, metalness: .3 });
-  function add(geometry, material, x, y, z) {
-    const mesh = new THREE.Mesh(geometry, material); mesh.position.set(x, y, z); plane.add(mesh); return mesh;
+  plane.name = 'Youqi airliner';
+  const ivory = new THREE.MeshPhysicalMaterial({ color: '#eeeadd', roughness: .38, metalness: .18, clearcoat: .28, clearcoatRoughness: .4 });
+  const wingMaterial = new THREE.MeshStandardMaterial({ color: '#cbd1c1', roughness: .48, metalness: .27 });
+  const green = new THREE.MeshStandardMaterial({ color: '#48634f', roughness: .43, metalness: .12 });
+  const trim = new THREE.MeshStandardMaterial({ color: '#b2a47b', roughness: .4, metalness: .55 });
+  const glass = new THREE.MeshPhysicalMaterial({ color: '#253d40', roughness: .16, metalness: .4, clearcoat: .65 });
+  const dark = new THREE.MeshStandardMaterial({ color: '#202c2b', roughness: .72, metalness: .18 });
+  const metal = new THREE.MeshStandardMaterial({ color: '#7e8c87', roughness: .32, metalness: .7 });
+  function add(name, geometry, material, x = 0, y = 0, z = 0) {
+    const mesh = new THREE.Mesh(geometry, material); mesh.name = name; mesh.position.set(x, y, z); plane.add(mesh); return mesh;
   }
-  add(new THREE.CylinderGeometry(.014, .008, .16, 20), white, 0, 0, 0);
-  add(new THREE.SphereGeometry(1, 20, 12), white, 0, .08, 0).scale.set(.014, .03, .014);
-  add(new THREE.ConeGeometry(.009, .045, 16), white, 0, -.098, 0).rotation.z = Math.PI;
-  function panel(points, material, depth = .003) {
+  function lathe(name, profile, material, x = 0, y = 0, z = 0, segments = 32) {
+    return add(name, new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), segments), material, x, y, z);
+  }
+  // A continuous rounded pressure hull, with a tapering tail instead of overlapping primitives.
+  const hullProfile = [[0,-.127],[.002,-.122],[.0045,-.108],[.008,-.084],[.0118,-.06],[.014,-.025],[.0145,.036],[.014,.065],[.0125,.081],[.009,.096],[.005,.105],[0,.109]];
+  const hullCurve = new THREE.CatmullRomCurve3(hullProfile.map(([r,y])=>new THREE.Vector3(r,y,0)));
+  const hullSamples=hullCurve.getPoints(72).map(p=>[Math.max(0,p.x),p.y]);
+  lathe('Fuselage', hullSamples, ivory).scale.z = .92;
+  function hullRadius(y) {
+    const next=hullSamples.findIndex(point=>point[1]>=y), a=hullSamples[Math.max(0,next-1)], b=hullSamples[Math.max(0,next)];
+    return a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]||1);
+  }
+  function panel(name, points, material, depth = .0015, z = 0) {
     const shape = new THREE.Shape();
     points.forEach(([x, y], i) => i ? shape.lineTo(x, y) : shape.moveTo(x, y)); shape.closePath();
-    return add(new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: .001, bevelSize: .001, bevelSegments: 1, steps: 1 }), material, 0, 0, 0);
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: .0006, bevelSize: .0006, bevelSegments: 2, steps: 1 });
+    geometry.translate(0, 0, -depth / 2);
+    return add(name, geometry, material, 0, 0, z);
   }
-  panel([[-.01,.038],[-.112,-.024],[-.11,-.04],[-.01,-.012],[.01,-.012],[.11,-.04],[.112,-.024],[.01,.038]], wing);
-  panel([[-.007,-.075],[-.05,-.1],[-.047,-.111],[0,-.095],[.047,-.111],[.05,-.1],[.007,-.075]], green);
-  const fin = panel([[0,-.065],[.042,-.105],[0,-.108]], green);
-  fin.rotation.y = -Math.PI / 2; fin.position.z = .008;
-  add(new THREE.SphereGeometry(1, 12, 8), glass, 0, .075, .013).scale.set(.01, .014, .003);
+  function seam(name, points, material = trim, radius = .00045) {
+    return add(name, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p))), 20, radius, 5, false), material);
+  }
+  // Closed airfoil sections: cambered upper surface, fine trailing edge and rising tips.
+  function wing(name, stations, side, material) {
+    const vertices = [], indices = [], ring = 12;
+    for (const [span, leading, trailing, height, thickness] of stations) {
+      for (let i = 0; i < ring; i++) {
+        const a = i / ring * Math.PI * 2;
+        const chord = (1 - Math.cos(a)) / 2;
+        vertices.push(side * span, leading + (trailing - leading) * chord, height + Math.sin(a) * thickness * (.85 - chord * .4));
+      }
+    }
+    for (let s = 0; s < stations.length - 1; s++) for (let i = 0; i < ring; i++) {
+      const a = s * ring + i, b = s * ring + (i + 1) % ring, c = b + ring, d = a + ring;
+      indices.push(a,b,d,b,c,d);
+    }
+    for (let i = 1; i < ring - 1; i++) { indices.push(0,i+1,i); const last=(stations.length-1)*ring; indices.push(last,last+i,last+i+1); }
+    if (side < 0) for (let i=0;i<indices.length;i+=3) [indices[i+1],indices[i+2]]=[indices[i+2],indices[i+1]];
+    const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3)); geometry.setIndex(indices); geometry.computeVertexNormals();
+    return add(name,geometry,material);
+  }
+  const windowMatrices = [], fanMatrices = [], dummy = new THREE.Object3D();
   for (const side of [-1, 1]) {
-    add(new THREE.CylinderGeometry(.009, .008, .035, 12), white, side * .048, -.006, -.01);
-    const intake = add(new THREE.CircleGeometry(.0065, 12), glass, side * .048, .012, -.01);
-    intake.rotation.x = -Math.PI / 2;
-    add(new THREE.SphereGeometry(.004, 8, 6), green, side * .11, -.025, .003);
-    for (let i = 0; i < 7; i++) add(new THREE.SphereGeometry(.0017, 6, 4), glass, side * .013, -.035 + i * .013, .005);
+    wing('Swept wing', [[.009,.033,-.027,-.003,.0035],[.038,.014,-.041,-.001,.0026],[.086,-.017,-.055,.004,.0015],[.119,-.04,-.061,.009,.0007]],side,wingMaterial);
+    wing('Raised winglet', [[.116,-.038,-.061,.009,.001],[.122,-.047,-.063,.025,.0006],[.123,-.053,-.064,.029,.0002]],side,green);
+    wing('Tailplane', [[.005,-.081,-.115,.003,.0018],[.037,-.101,-.123,.008,.001],[.052,-.115,-.126,.012,.0004]],side,wingMaterial);
+    seam('Aileron seam', [[side*.049,-.038,.002],[side*.085,-.049,.006],[side*.11,-.057,.01]],green,.00035);
+    seam('Wing leading edge', [[side*.017,.028,-.001],[side*.038,.014,.001],[side*.086,-.017,.005],[side*.118,-.04,.01]],trim,.0004);
+    seam('Cabin stripe', [[side*.0078,.089,.006],[side*.0137,.06,.0045],[side*.0143,.01,.0045],[side*.0117,-.055,.0045],[side*.006,-.096,.0035]],green,.00065);
+    for (let i=0;i<11;i++) {
+      const y=.054-i*.0094, radius=Math.sqrt(hullRadius(y)**2-(.006/.92)**2)+.00025;
+      dummy.position.set(side*radius,y,.006); dummy.rotation.set(0,side*.95,0); dummy.scale.set(.0009,.00165,.0005); dummy.updateMatrix(); windowMatrices.push(dummy.matrix.clone());
+    }
+    const cockpitPoints = [[side*.001,.094],[side*.007,.089],[side*.010,.077],[side*.002,.081]];
+    const cockpitGeometry = new THREE.BufferGeometry(), glazing=[], glazingIndices=[], divisions=5;
+    for(let row=0;row<=divisions;row++)for(let column=0;column<=divisions;column++) {
+      const u=column/divisions,v=row/divisions;
+      const interpolate=axis=>(1-v)*((1-u)*cockpitPoints[0][axis]+u*cockpitPoints[1][axis])+v*((1-u)*cockpitPoints[3][axis]+u*cockpitPoints[2][axis]);
+      const x=interpolate(0),y=interpolate(1);
+      glazing.push(x,y,Math.sqrt(Math.max(0,hullRadius(y)**2-x*x))*.92+.00025);
+    }
+    for(let row=0;row<divisions;row++)for(let column=0;column<divisions;column++) {
+      const a=row*(divisions+1)+column,b=a+1,c=a+divisions+1,d=c+1;
+      glazingIndices.push(...(side>0?[a,c,b,b,c,d]:[a,b,c,b,d,c]));
+    }
+    cockpitGeometry.setAttribute('position',new THREE.Float32BufferAttribute(glazing,3));
+    cockpitGeometry.setIndex(glazingIndices);cockpitGeometry.computeVertexNormals();
+    add('Cockpit glazing',cockpitGeometry,glass);
+    // Pylons lead into open nacelles; a recessed fan and rear nozzle give real depth.
+    add('Engine pylon',new THREE.BoxGeometry(.0035,.027,.009),wingMaterial,side*.046,-.003,-.007);
+    const ex=side*.046, ey=.008, ez=-.017;
+    lathe('Engine nacelle', [[.006,-.028],[.009,-.02],[.0105,.009],[.010,.018],[.0084,.019],[.0078,.016],[.0074,.005]],ivory,ex,ey,ez);
+    lathe('Intake lip',[[.008,.0155],[.0083,.0187],[.009,.0192],[.010,.018],[.0103,.016]],metal,ex,ey,ez);
+    lathe('Intake lining',[[.0077,.0155],[.0073,.004]],dark,ex,ey,ez);
+    const fan=add('Fan cavity',new THREE.CircleGeometry(.0074,24),dark,ex,ey+.004,ez);fan.rotation.x=-Math.PI/2;
+    add('Fan spinner',new THREE.ConeGeometry(.0022,.006,16),metal,ex,ey+.007,ez);
+    for(let i=0;i<10;i++) {
+      const a=i*Math.PI/5;
+      dummy.position.set(ex+Math.sin(a)*.0045,ey+.0047,ez+Math.cos(a)*.0045);
+      dummy.rotation.set(0,a,0);dummy.scale.set(1,1,1);dummy.updateMatrix();fanMatrices.push(dummy.matrix.clone());
+    }
+    lathe('Exhaust nozzle',[[.0055,-.019],[.0048,-.03],[.0038,-.03],[.0038,-.021]],metal,ex,ey,ez);
+    const exhaust=add('Exhaust interior',new THREE.CircleGeometry(.0038,16),dark,ex,ey-.025,ez);exhaust.rotation.x=Math.PI/2;
+    add('Wing navigation light',new THREE.SphereGeometry(.0012,8,6),new THREE.MeshStandardMaterial({color:side<0?'#a87867':'#6b967d',roughness:.35}),side*.122,-.054,.025);
   }
+  const windows=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,6),glass,windowMatrices.length); windows.name='Cabin windows';windowMatrices.forEach((matrix,i)=>windows.setMatrixAt(i,matrix));plane.add(windows);
+  const fans=new THREE.InstancedMesh(new THREE.BoxGeometry(.0012,.0005,.004),metal,fanMatrices.length);fans.name='Turbofan blades';fanMatrices.forEach((matrix,i)=>fans.setMatrixAt(i,matrix));plane.add(fans);
+  const fin=panel('Vertical stabilizer',[[0,-.073],[.034,-.105],[.035,-.122],[0,-.116]],green,.0022);
+  fin.rotation.y=-Math.PI/2;fin.position.z=.004;
+  const emblem=panel('Tail brass inlay',[[.013,-.096],[.023,-.106],[.023,-.113],[.013,-.104]],trim,.0024);
+  emblem.rotation.y=-Math.PI/2;emblem.position.z=.004;
+  seam('Dorsal trim',[[0,.057,.0135],[0,.01,.0135],[0,-.055,.011],[0,-.08,.009]],trim,.0003);
   plane.scale.setScalar(1.18);
   return plane;
 }
