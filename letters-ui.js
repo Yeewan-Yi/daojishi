@@ -13,6 +13,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   window.visualViewport?.addEventListener('scroll',fitKeyboard);
   fitKeyboard();
   let opened=false, closing, timer, busy=false, fetching=false, booting=false, contextKey='', identity=null, pair=null, pendingPair=null;
+  let editorActive=false, composing=false;
   let items=[], cursor=null, revision=-1, latestOther=0, edit=null, sendId=crypto.randomUUID(), seen=0, pendingRevision=null, names='', view='loading';
   let explicit=null, invalidIdentity=false;
   try { explicit=identityFromHash(location.hash); } catch { invalidIdentity=true; }
@@ -27,19 +28,38 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   }
   function setOpen(value) {
     clearTimeout(closing); opened=value;
+    if(!value){editorActive=false;composing=false;}
     dock.classList.toggle('is-open',value); panel.inert=!value; trigger.setAttribute('aria-expanded',String(value));
     document.body.classList.toggle('letters-sidebar-open',value && fine.matches);
     $('letters-backdrop').hidden=!value || fine.matches;
     if(value) { sync(); if(view==='book' && list.scrollTop<24 && !pendingRevision) markRead(); }
   }
+  const isEditor=element=>!!element?.matches?.('input:not([readonly]),textarea,[contenteditable="true"]');
+  function closeWhenIdle(delay=240){
+    clearTimeout(closing);
+    closing=setTimeout(()=>{if(!dock.matches(':hover')&&!editorActive&&!composing)setOpen(false);},delay);
+  }
   dock.addEventListener('pointerenter',event=>{if(fine.matches && event.pointerType!=='touch')setOpen(true);});
-  dock.addEventListener('pointerleave',event=>{if(fine.matches && event.pointerType!=='touch')closing=setTimeout(()=>{if(dock.contains(document.activeElement))document.activeElement.blur();setOpen(false);},240);});
-  dock.addEventListener('focusin',event=>{if(fine.matches && event.target!==trigger)setOpen(true);});
-  dock.addEventListener('focusout',()=>{if(fine.matches)closing=setTimeout(()=>{if(!dock.matches(':hover')&&!dock.contains(document.activeElement))setOpen(false);},160);});
+  dock.addEventListener('pointerleave',event=>{if(fine.matches && event.pointerType!=='touch')closeWhenIdle();});
+  dock.addEventListener('focusin',event=>{
+    editorActive=isEditor(event.target);
+    if(fine.matches && event.target!==trigger)setOpen(true);
+  });
+  dock.addEventListener('focusout',event=>{
+    // IME candidate windows may report a null relatedTarget. Keep the editing
+    // session until a real outside click, another focused control, or explicit close.
+    if(event.relatedTarget&&!dock.contains(event.relatedTarget))editorActive=false;
+    if(fine.matches)closeWhenIdle(160);
+  });
+  dock.addEventListener('compositionstart',()=>{composing=true;clearTimeout(closing);});
+  dock.addEventListener('compositionend',()=>{composing=false;if(fine.matches&&!editorActive)closeWhenIdle();});
+  document.addEventListener('pointerdown',event=>{
+    if(opened&&!dock.contains(event.target)){editorActive=false;if(fine.matches)closeWhenIdle();}
+  },true);
   trigger.addEventListener('click',event=>{if(!fine.matches || event.detail===0)setOpen(!opened);});
   $('letters-close').addEventListener('click',()=>{setOpen(false);trigger.focus({preventScroll:true});});
   $('letters-backdrop').addEventListener('click',()=>setOpen(false));
-  addEventListener('keydown',event=>{if(event.key==='Escape'&&opened){event.stopImmediatePropagation();setOpen(false);trigger.focus({preventScroll:true});}},true);
+  addEventListener('keydown',event=>{if(event.key==='Escape'&&opened){event.stopImmediatePropagation();if(event.isComposing||event.keyCode===229||composing)return;setOpen(false);trigger.focus({preventScroll:true});}},true);
   fine.addEventListener('change',()=>setOpen(false));
   $('letters-enable-cloud').addEventListener('click',()=>{setOpen(false);openSharing();});
   $('letters-retry').addEventListener('click',()=>{contextKey='';sync();});
@@ -58,7 +78,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   function saveDraft(){put(draftKey(),input.value);}
   function counter(){const length=[...input.value].length;$('letter-count').textContent=`${length} / 500`;$('letter-count').classList.toggle('is-over',length>500);}
   input.addEventListener('input',()=>{saveDraft();counter();});
-  input.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){$('letter-form').requestSubmit();event.preventDefault();}});
+  input.addEventListener('keydown',event=>{if(!event.isComposing&&event.keyCode!==229&&!composing&&(event.ctrlKey||event.metaKey)&&event.key==='Enter'){$('letter-form').requestSubmit();event.preventDefault();}});
   $('letter-cancel').addEventListener('click',()=>{
     saveDraft();edit=null;sendId=crypto.randomUUID();input.value=get(draftKey(),'');updateComposer();
   });
