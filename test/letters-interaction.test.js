@@ -12,7 +12,8 @@ function notebook(t){
   t.mock.timers.enable({apis:['setTimeout']});
   const elements=new Map(), document=new EventTarget(), window=new EventTarget();
   class Element extends EventTarget{
-    constructor(id){super();this.id=id;this.hover=false;this.value='';this.attributes=new Map();this.blurCount=0;this.submits=0;const classes=new Set();this.classList={toggle(name,on){if(on??!classes.has(name))classes.add(name);else classes.delete(name);},contains:name=>classes.has(name)};this.style={setProperty(){}};}
+    constructor(id){super();this.id=id;this.hover=false;this.value='';this.attributes=new Map();this.blurCount=0;this.submits=0;const classes=new Set();this.classList={toggle(name,on){if(on??!classes.has(name))classes.add(name);else classes.delete(name);},contains:name=>classes.has(name),add:name=>classes.add(name),remove:name=>classes.delete(name)};this.style={setProperty(){}};}
+    replaceChildren(...children){this.children=children;}
     matches(selector){return selector===':hover'?this.hover:['letter-body','letter-name-self','letter-name-other'].includes(this.id);}
     contains(element){return !!element&&element.id!=='outside';}
     setAttribute(key,value){this.attributes.set(key,value);}

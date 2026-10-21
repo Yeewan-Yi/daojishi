@@ -3,9 +3,15 @@ import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validate
 import { mountFlight, flightStage } from './flight.js?v=20261021-chuanshu';
 import { mountFlipClock } from './flip-clock.js';
 import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261021-chuanshu';
-import { mountLetters } from './letters-ui.js?v=20261021-writing';
+import { mountLetters } from './letters-ui.js?v=20261021-experience';
+import {startBoot} from './boot.js?v=20261021-experience';
+import {openModal,closeModal,bindModalMotion} from './motion.js?v=20261021-experience';
+import {mountDatePicker} from './date-picker.js?v=20261021-experience';
+const boot=startBoot();boot.advance(.22);
 
 const $ = id => document.getElementById(id);
+const datePicker=mountDatePicker();
+bindModalMotion();
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
 const dateFormat = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 const timeFormat = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -171,7 +177,7 @@ function initialize() {
   renderMetadata();
   setEditAccess();
   tick();
-  if (room) refreshCloud();
+  if (room) return refreshCloud();
 }
 
 function renderMetadata() {
@@ -249,7 +255,8 @@ function openEdit(field = 'title-input') {
   $('start-input').value = toLocalInput(state.start);
   $('end-input').value = toLocalInput(state.end);
   $('form-error').textContent = '';
-  $('edit-dialog').showModal();
+  datePicker.refresh();
+  openModal($('edit-dialog'));
   $(field).focus();
 }
 
@@ -280,7 +287,7 @@ $('edit-form').addEventListener('submit', async event => {
     try {
       applyCloudRecord(await cloud.update(room, next, editingVersion));
       cloudStatus = 'synced'; cloudFailures = 0;
-      $('edit-dialog').close();
+      closeModal($('edit-dialog'));
       toast('已保存到云端，对方将自动收到更新。');
     } catch (error) {
       $('form-error').textContent = error.message;
@@ -295,15 +302,9 @@ $('edit-form').addEventListener('submit', async event => {
   persist();
   replaceShareHash();
   renderMetadata();
-  $('edit-dialog').close();
+  closeModal($('edit-dialog'));
   toast(saved ? '期待已更新，倒计时继续。' : '已更新，暂时无法保存到此设备。');
 });
-
-document.querySelectorAll('.close-dialog').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
-document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('click', event => {
-  const bounds = dialog.getBoundingClientRect();
-  if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
-}));
 
 function makeShareUrl() {
   if (room && cloudRecord) {
@@ -330,7 +331,7 @@ function updateSharePanel() {
 $('share-button').addEventListener('click', () => {
   $('cloud-error').textContent = '';
   updateSharePanel();
-  $('share-dialog').showModal();
+  openModal($('share-dialog'));
 });
 $('share-permission').addEventListener('change', updateSharePanel);
 $('cloud-create').addEventListener('click', async () => {
@@ -496,12 +497,14 @@ function installScrollScene() {
   new MutationObserver(requestPaint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   paint();
 }
-initialize();
+const initialData=initialize();
+boot.advance(.43);
 lettersUI = mountLetters({getContext:()=>({room,record:cloudRecord}),openSharing:()=>$('share-button').click(),notify:toast});
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-import('./globe-3d.js?v=20261021-clear').then(async ({ mountGlobe }) => {
+const globeReady=import('./globe-3d.js?v=20261021-clear').then(async ({ mountGlobe }) => {
+  boot.advance(.65);
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;
   if (latestGlobeValue) globe3d.update(latestGlobeValue);
@@ -510,3 +513,5 @@ import('./globe-3d.js?v=20261021-clear').then(async ({ mountGlobe }) => {
   document.body.classList.add('has-globe-3d');
 }).catch(() => { /* Keep the SVG journey usable if 3D resources cannot load. */ });
 $('globe-reset').addEventListener('click', () => globe3d?.reset());
+
+Promise.allSettled([globeReady,cloudCache?Promise.resolve():initialData,Promise.race([document.fonts?.ready||Promise.resolve(),new Promise(resolve=>setTimeout(resolve,3000))])]).then(()=>{boot.advance(.9);requestAnimationFrame(()=>requestAnimationFrame(()=>boot.finish()));});

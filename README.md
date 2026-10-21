@@ -20,6 +20,10 @@
 - Supabase 云端共享：固定链接、双向自动同步、共同编辑/仅查看权限、版本冲突保护、断线重试。
 - 分享链接携带标题与绝对时间，支持中文与表情，自动换算到接收者设备时区。
 - 深浅主题、专注模式，以及悬停向右展开文字的几何导航。
+- 页面未能立即就绪时显示飞机从左向右的加载航程，资源就绪后抵达并淡出；快速加载时跳过。
+- 自定义日期日历，年份、月份和时分支持滚轮调整；日历区域滚轮切换月份，Shift + 滚轮切换年份。
+- 双人传书支持 emoji、每封最多 3 张图片、图片草稿、粘贴/拖入图片、历史缩略图及大图查看。上传前转换为最长边 1600 像素、最大 1.2 MB 的静态 JPEG。
+- 编辑、分享、日期选择、图片预览及表情面板有进出过渡，并尊重系统减少动态效果设置。
 - 无构建步骤，无 JavaScript 第三方依赖。字体服务不可用时自动使用系统字体。
 
 ## 共同使用
@@ -53,9 +57,11 @@ Supabase 的安全检查可能提示受限的 `SECURITY DEFINER` 函数可由访
 
 1. 在 SQL Editor 中运行 `supabase/setup.sql`，保留 Data API 开启。
 2. 在 `config.js` 填写自己的项目根 URL（不含 `/rest/v1/`）和 Publishable key。
-3. 执行 `supabase/verify.sql` 核对权限，再推送部署。
+3. 若需要传书，依次运行 `supabase/letters.sql`、`supabase/letters-media.sql`。图片桶 `youqi-letters` 保持私有，不授予客户端直接访问。
+4. 部署 `supabase/functions/youqi-media/index.ts` 为 `youqi-media` Edge Function。函数使用房间凭证与个人凭证认证，因此关闭网关 JWT 验证；后端通过环境中的 Secret key 或 service_role key 操作存储，浏览器仅持有 Publishable key。
+5. 执行 `supabase/verify.sql`、`supabase/verify-letters.sql`、`supabase/verify-letter-images.sql` 核对权限，再推送部署。这些 SQL 验证均回滚测试数据。
 
-不需要关闭 RLS、启用匿名登录、安装 SDK 或提供数据库管理员密钥。
+不需要关闭 RLS、启用匿名登录或向前端提供数据库管理员密钥。图片访问链接由后端核验身份后签发，有效期一小时；轮询只读取图片元数据，图片不会随着每秒倒计时重复下载。
 
 ## 本地运行
 

@@ -1,0 +1,45 @@
+.modal[open]{animation:window-arrive .32s cubic-bezier(.22,.65,.3,1) both;transform-origin:50% 44%}
+.modal.is-closing{animation:window-depart .22s ease both;pointer-events:none}
+.modal[open]::backdrop{animation:veil-arrive .32s ease both}
+.modal.is-closing::backdrop{animation:veil-depart .22s ease both}
+@keyframes window-arrive{from{opacity:0;transform:translateY(12px) scale(.975)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes window-depart{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(7px) scale(.985)}}
+@keyframes veil-arrive{from{opacity:0}to{opacity:1}}
+@keyframes veil-depart{from{opacity:1}to{opacity:0}}
+.modal{border-radius:5px;box-shadow:0 24px 100px #0002;max-height:calc(var(--visual-height,100dvh) - 28px)}
+.modal .button{border-radius:3px}
+.date-select-button{width:100%;display:flex;align-items:center;gap:12px;min-height:48px;padding:11px 12px;border:1px solid var(--line);border-radius:3px;background:var(--input);color:var(--text);font:inherit;font-size:16px;text-align:left;cursor:pointer;transition:border-color .25s ease,background-color .25s ease}
+.date-select-button>svg{width:18px;height:18px;color:var(--accent);flex:none}.date-select-button .date-select-chevron{width:15px;height:15px;margin-left:auto}
+.date-select-button>span{font-family:var(--font-number,'Times New Roman',serif);font-variant-numeric:tabular-nums}.date-select-button>span:nth-last-child(2){margin-left:auto;color:var(--accent-strong)}
+.date-select-button:hover,.date-select-button:focus-visible{border-color:var(--accent);background:var(--wash)}
+.date-modal{width:min(430px,calc(100vw - 28px));padding:25px 27px}.date-modal .modal-heading{align-items:center;margin-bottom:22px}.date-modal .modal-heading h2{margin:0;font-weight:400;letter-spacing:1px}
+.picker-navigation{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding-bottom:17px}
+.picker-year-field,.picker-month-field{display:flex;align-items:center;gap:4px}
+.picker-navigation button,.picker-time-field button{display:grid;place-items:center;width:26px;min-height:28px;padding:0;border:0;background:transparent;color:var(--accent-strong);font:inherit;font-size:21px;cursor:pointer;border-radius:3px;transition:background-color .2s,color .2s}
+.picker-navigation button:hover,.picker-time-field button:hover{background:var(--wash);color:var(--text)}
+.picker-year-field label,.picker-time-field label{display:flex;align-items:center;gap:5px;margin:0}
+.picker-year-field label>span,.picker-time-field label>span{font-size:13px;color:var(--muted)}
+.picker-year-field input,.picker-time-field input{min-height:0;padding:3px 0;border:0;background:transparent;border-radius:0;appearance:textfield;box-shadow:none;text-align:center;font:24px 'Times New Roman',serif;font-variant-numeric:tabular-nums}
+.picker-year-field input{width:57px}.picker-time-field input{width:37px}
+.picker-year-field input::-webkit-inner-spin-button,.picker-time-field input::-webkit-inner-spin-button{appearance:none}
+.picker-month-field select{width:77px;min-height:32px;padding:3px 4px;border:0;background:transparent;color:var(--text);font:17px 'Times New Roman',serif}
+.picker-weekdays,.picker-days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.picker-weekdays{padding:17px 0 8px;color:var(--muted);font-size:12px}
+.picker-days button{height:36px;position:relative;padding:0;border:1px solid transparent;background:transparent;color:var(--text);font:18px 'Times New Roman',serif;border-radius:3px;cursor:pointer;transition:background .18s,border-color .18s,color .18s}
+.picker-days button:hover{background:var(--wash);border-color:var(--line)}.picker-days button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong)}
+.picker-days .is-today:after{content:'';position:absolute;bottom:3px;left:calc(50% - 1px);width:2px;height:2px;border-radius:50%;background:var(--accent-strong)}
+.picker-time{display:flex;align-items:center;justify-content:center;gap:24px;padding:13px 0 2px;margin-top:15px;border-top:1px solid var(--line)}.picker-time>span{font-size:12px;letter-spacing:1px;color:var(--muted);margin-right:auto}.picker-time-field{display:grid;justify-items:center}.picker-time-field button{min-height:20px;height:20px;font-size:16px}
+.picker-summary{padding-top:10px;text-align:center;font-size:12px;color:var(--muted);letter-spacing:.5px}.date-modal .modal-actions{margin-top:16px;padding-top:16px}.date-modal .modal-actions #picker-today{margin-right:auto}
+.letter-composer-tools{display:flex;align-items:center;gap:10px;position:relative;margin:0 0 8px}.letter-composer-tools>button{width:28px;height:29px;padding:4px;border:0;background:transparent;color:var(--accent-strong);border-radius:2px;transition:background .2s,color .2s}
+.letter-composer-tools>button:hover{background:var(--wash)}.letter-composer-tools>button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+#letter-upload-status{font-size:11px;letter-spacing:.3px;color:var(--muted)}
+.letter-emoji-picker{position:absolute;z-index:5;left:0;bottom:calc(100% + 8px);display:grid;grid-template-columns:repeat(8,1fr);width:min(290px,calc(100vw - 50px));padding:10px;gap:3px;border:1px solid var(--line);background:var(--surface);box-shadow:0 8px 30px #0002;opacity:0;visibility:hidden;transform:translateY(5px);transition:opacity .2s ease,transform .25s ease,visibility .25s}
+.letter-emoji-picker.is-open{opacity:1;visibility:visible;transform:translateY(0)}
+.letter-emoji-picker button{display:grid;place-items:center;min-width:0;padding:4px 0;border:0;background:transparent;border-radius:3px;font:22px 'Segoe UI Emoji','Apple Color Emoji',sans-serif;line-height:1.3}.letter-emoji-picker button:hover{background:var(--wash)}
+.letter-attachments{display:flex;align-items:center;gap:8px}.letter-attachments:not(:empty){margin:2px 0 12px}.letter-attachment{position:relative;width:66px;height:66px;flex:none}
+.letters-panel .attachment-remove{position:absolute;right:-4px;top:-5px;width:20px;height:20px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--text);font:16px sans-serif;line-height:1;padding:0}
+.letter-image-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:7px;margin-top:12px}.letter-image{display:block;width:100%;height:100%;padding:0;border:1px solid var(--line);border-radius:2px;background:var(--wash);overflow:hidden;cursor:zoom-in;transition:border-color .2s,opacity .2s}.letter-image:hover{border-color:var(--accent)}.letter-image img{display:block;width:100%;height:100%;object-fit:cover;aspect-ratio:1.25}.letter-attachment .letter-image img{aspect-ratio:1}.letter-image-grid .letter-image{max-height:190px}.letter-image.is-unavailable{min-height:65px;font-size:11px;color:var(--muted)}
+.letter-text:empty{display:none}.letters-panel .letter-form textarea{height:clamp(60px,10svh,90px)}.letters-empty{min-height:70px}
+.letters-view:not([hidden]){animation:letter-content-arrive .22s ease both}@keyframes letter-content-arrive{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.image-modal{width:max-content;max-width:calc(100vw - 30px);padding:18px;background:var(--surface)}.image-modal .modal-heading{margin:0 0 15px;align-items:center;gap:40px}.image-modal .modal-heading h2{font-size:17px;font-weight:400;letter-spacing:2px}.image-modal>img{display:block;max-width:min(1100px,calc(100vw - 68px));max-height:calc(85svh - 70px);width:auto;height:auto;object-fit:contain}
+@media(max-width:520px){.date-modal{padding:22px 20px}.picker-navigation{gap:8px}.picker-days button{height:35px}.letter-emoji-picker{grid-template-columns:repeat(8,1fr);padding:8px}.letter-attachment{width:58px;height:58px}}
+@media(prefers-reduced-motion:reduce){.modal[open],.modal[open]::backdrop,.modal.is-closing,.modal.is-closing::backdrop,.letters-view:not([hidden]){animation:none}.letter-emoji-picker,.date-select-button,.picker-days button{transition:none}}

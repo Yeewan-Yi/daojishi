@@ -1,4 +1,5 @@
-import { LettersClient, createPair, identityFromHash, personalUrl, validateIdentity } from './letters.js?v=20261021-chuanshu';
+import { LettersClient, createPair, identityFromHash, personalUrl, validateIdentity } from './letters.js?v=20261021-experience';
+import {mountLetterMedia} from './letter-media.js?v=20261021-experience';
 
 export function mountLetters({getContext,openSharing,notify,client=new LettersClient()}) {
   const $=id=>document.getElementById(id), dock=$('letters-dock'), panel=$('letters-panel'), trigger=$('letters-trigger');
@@ -20,7 +21,9 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   const get=(key,fallback=null)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
   const put=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{return false;}};
   const key=kind=>`youqi.letters.${kind}.${getContext().room?.id}.${identity?.id||'setup'}`;
-  const error=message=>{$('letters-error').textContent=message||'';$('letters-retry').hidden=!message;};
+  let connectionError=false;
+  const error=(message,network=false)=>{connectionError=!!message&&network;$('letters-error').textContent=message||'';$('letters-retry').hidden=!message;};
+  const media=mountLetterMedia({client,input,getContext,getIdentity:()=>identity,onChange:counter,onError:error,isComposing:()=>composing||imeSettling});
   function setView(next) {
     view=next;
     $('letters-links-button').hidden=!identity || !['book','links'].includes(next);
@@ -34,11 +37,12 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   function setEditing(value){editorActive=value;dock.classList.toggle('is-editing',value);if(!value)stopWriting();}
   function setOpen(value) {
     clearTimeout(closing); opened=value;
-    if(!value){setEditing(false);composing=false;imeSettling=false;clearTimeout(imeTimer);}
+    if(!value){media.close();setEditing(false);composing=false;imeSettling=false;clearTimeout(imeTimer);}
     dock.classList.toggle('is-open',value); panel.inert=!value; trigger.setAttribute('aria-expanded',String(value));
     $('letters-backdrop').hidden=!value || fine.matches;
     if(value) { sync(); if(view==='book' && list.scrollTop<24 && !pendingRevision) markRead(); }
   }
+  for(const id of ['letter-attach','letter-emoji'])$(id).addEventListener('click',()=>setEditing(true),true);
   const isEditor=element=>!!element?.matches?.('input:not([readonly]),textarea,[contenteditable="true"]');
   function closeWhenIdle(delay=240){
     clearTimeout(closing);
@@ -73,7 +77,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
     if(event.key==='Tab'&&opened&&!event.isComposing&&!composing)setTimeout(()=>{
       if(!dock.contains(document.activeElement)){setEditing(false);if(fine.matches)closeWhenIdle(160);}
     },0);
-    if(event.key==='Escape'&&opened){event.stopImmediatePropagation();if(event.isComposing||event.keyCode===229||composing||imeSettling)return;setOpen(false);trigger.focus({preventScroll:true});}
+    if(event.key==='Escape'&&opened&&!document.querySelector?.('dialog[open]')){event.stopImmediatePropagation();if(event.isComposing||event.keyCode===229||composing||imeSettling)return;setOpen(false);trigger.focus({preventScroll:true});}
   },true);
   fine.addEventListener('change',()=>{if(!editorActive&&!composing)setOpen(false);});
   $('letters-enable-cloud').addEventListener('click',()=>{setOpen(false);openSharing();});
@@ -91,17 +95,17 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   }
   function draftKey(){return key(edit?`edit.${edit.id}`:'draft');}
   function saveDraft(){put(draftKey(),input.value);}
-  function canSend(){return !busy && !composing && !!input.value.trim() && [...input.value.trim()].length<=500;}
+  function canSend(){return !busy && !composing && !media.uploading && (!!input.value.trim()||media.images.length>0) && [...input.value.trim()].length<=500;}
   function counter(){const length=[...input.value].length;$('letter-count').textContent=`${length} / 500`;$('letter-count').classList.toggle('is-over',length>500);$('letter-send').disabled=!canSend();}
   input.addEventListener('input',()=>{saveDraft();counter();if(input.value.trim()||composing)writeStroke();else stopWriting();});
   input.addEventListener('keydown',event=>{if(!event.isComposing&&event.keyCode!==229&&!composing&&(event.ctrlKey||event.metaKey)&&event.key==='Enter'){if(canSend())$('letter-form').requestSubmit();event.preventDefault();}});
   $('letter-cancel').addEventListener('click',()=>{
-    saveDraft();edit=null;sendId=crypto.randomUUID();input.value=get(draftKey(),'');updateComposer();
+    saveDraft();edit=null;sendId=crypto.randomUUID();input.value=get(draftKey(),'');media.restore(draftKey());updateComposer();
   });
   function updateComposer(){
     $('letter-send-label').textContent=edit?'保存修改':'递函';$('letter-cancel').hidden=!edit;
     $('letter-composer-label').textContent=edit?'修改这封信':`执笔 · ${names}`;
-    input.disabled=busy;if(busy)stopWriting();counter();
+    input.disabled=busy;if(busy)stopWriting();media.setDisabled(busy);counter();
   }
   function render() {
     list.replaceChildren();
@@ -115,10 +119,11 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
       time.textContent=new Intl.DateTimeFormat('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',...(new Date(item.created_at).getFullYear()!==new Date().getFullYear()?{year:'numeric'}:{})}).format(new Date(item.created_at));
       if(item.version>1)time.textContent+=' · 已编辑';head.append(name,time);
       const body=document.createElement('p');body.className='letter-text';body.textContent=item.body;row.append(head,body);
+      media.history(row,item.images);
       if(item.author===identity.id){
         const actions=document.createElement('div');actions.className='letter-actions';
         const change=document.createElement('button');change.type='button';change.textContent='修改';change.disabled=busy;
-        change.addEventListener('click',()=>{if(busy)return;saveDraft();edit=item;input.value=get(draftKey(),item.body);error('');updateComposer();input.focus({preventScroll:true});});
+        change.addEventListener('click',()=>{if(busy||media.uploading)return;saveDraft();edit=item;input.value=get(draftKey(),item.body);media.restore(draftKey(),item.images);error('');updateComposer();input.focus({preventScroll:true});});
         const remove=document.createElement('button');remove.type='button';remove.textContent='删除';remove.disabled=busy;
         remove.addEventListener('click',()=>{
           if(busy)return;
@@ -128,7 +133,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
           const no=document.createElement('button');no.textContent='取消';no.type='button';
           no.addEventListener('click',render);
           yes.addEventListener('click',async()=>{if(busy)return;busy=true;yes.disabled=no.disabled=true;updateComposer();error('');
-            try{await client.remove(getContext().room,identity,item.id,item.version);if(edit?.id===item.id){edit=null;input.value=get(draftKey(),'');}await load(false);}
+            try{await client.remove(getContext().room,identity,item.id,item.version);if(edit?.id===item.id){edit=null;input.value=get(draftKey(),'');media.restore(draftKey());}await load(false);}
             catch(e){error(e.message);}finally{busy=false;updateComposer();render();}
           });actions.append(prompt,no,yes);
         });actions.append(change,remove);row.append(actions);
@@ -149,7 +154,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
       if(!older){revision=data.revision;pendingRevision=null;$('letters-updates').hidden=true;}
       setView('book');render();list.scrollTop=older?previous:0;updateComposer();error('');
       if(opened&&!older)markRead();else unread();
-    }catch(e){error(e.message);}finally{fetching=false;$('letters-older').disabled=false;}
+    }catch(e){error(e.code==='NETWORK'?'书信暂时无法同步，网络恢复后会自动重试。':e.message,true);}finally{fetching=false;$('letters-older').disabled=false;}
   }
   async function sync(){
     clearTimeout(timer);
@@ -164,11 +169,12 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
       if(Array.isArray(pendingPair)&&pendingPair.length===2){$('letter-name-self').value=pendingPair[0].name||'';$('letter-name-other').value=pendingPair[1].name||'';}
       try{identity=explicit||validateIdentity(get(`youqi.letters.identity.${ctx.room.id}`));}catch{identity=null;}
       if(invalidIdentity){setView('identity');error('传书专属链接不完整，请使用自己的完整链接。');return;}
-      if(identity){put(`youqi.letters.identity.${ctx.room.id}`,identity);seen=get(key('seen'),0);input.value=get(draftKey(),'');updateComposer();}
+      if(identity){put(`youqi.letters.identity.${ctx.room.id}`,identity);seen=get(key('seen'),0);input.value=get(draftKey(),'');media.restore(draftKey());updateComposer();}
     }
     booting=true;
     try{
       const status=await client.status(ctx.room,identity);
+      if(connectionError)error('');
       if(!status.ready){setView(status.can_setup?'setup':'identity');return;}
       if(status.needs_identity){setView('identity');if(pair){$('letters-recover').hidden=false;}return;}
       latestOther=status.latest_other;
@@ -179,7 +185,7 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
         else{pendingRevision=status.revision;$('letters-updates').hidden=false;}
       }
       if(opened&&view==='book'&&list.scrollTop<24&&!pendingRevision)markRead();else unread();
-    }catch(e){error(e.message);}
+    }catch(e){error(e.code==='NETWORK'?'书信暂时无法同步，网络恢复后会自动重试。':e.message,true);}
     finally{booting=false;timer=setTimeout(sync,document.hidden?15000:opened?2500:6000);}
   }
   $('letters-setup-form').addEventListener('submit',async event=>{
@@ -215,10 +221,11 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
     event.preventDefault();if(!canSend()||!identity)return;busy=true;saveDraft();error('');updateComposer();
     const oldEdit=edit, body=input.value;
     try{
-      await client.write(getContext().room,identity,body,edit?.id||sendId,edit?.version??null);
-      put(draftKey(),'');input.value='';edit=null;sendId=crypto.randomUUID();
+      await client.write(getContext().room,identity,body,edit?.id||sendId,edit?.version??null,media.images);
+      put(draftKey(),'');media.clear();input.value='';edit=null;sendId=crypto.randomUUID();
       // Preserve any unsent new message when finishing an edit.
       if(oldEdit)input.value=get(draftKey(),'');
+      media.restore(draftKey());
       await load(false);
     }catch(e){error(e.message);}
     finally{busy=false;updateComposer();render();}
