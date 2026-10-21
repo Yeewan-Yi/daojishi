@@ -501,7 +501,7 @@ lettersUI = mountLetters({getContext:()=>({room,record:cloudRecord}),openSharing
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-import('./globe-3d.js?v=20261021-chuanshu').then(async ({ mountGlobe }) => {
+import('./globe-3d.js?v=20261021-surface').then(async ({ mountGlobe }) => {
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;
   if (latestGlobeValue) globe3d.update(latestGlobeValue);

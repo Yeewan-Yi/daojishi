@@ -2,35 +2,90 @@ import * as THREE from './vendor/three.module.js';
 import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261021-chuanshu';
 import { mountSurfaceProgress } from './globe-labels.js?v=20261021-chuanshu';
 
-const lightPalette = { ocean: '#e7eee3', land: '#b1c4a5', coast: '#a2b799', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
-const darkPalette = { ocean: '#30473f', land: '#637654', coast: '#819674', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
+const lightPalette = { ocean: '#d3e1d8', land: '#a8bc9b', coast: '#9aaf92', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
+const darkPalette = { ocean: '#293e3b', land: '#6c8065', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
 const vector = values => new THREE.Vector3(...values);
 
-function earthTexture(data, palette) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 2048; canvas.height = 1024;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = palette.ocean; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = palette.land; ctx.strokeStyle = palette.coast; ctx.lineWidth = .6;
+function canvasTexture(canvas, color = false) {
+  const texture = new THREE.CanvasTexture(canvas);
+  if (color) texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping; texture.offset.x = .3;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+// Coherent spherical fields keep the date line and both poles free of seams.
+function noise3(x, y, z) {
+  const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+  const u = fade(x - ix), v = fade(y - iy), w = fade(z - iz);
+  const hash = (a,b,c) => {
+    let h = Math.imul(a,374761393) ^ Math.imul(b,668265263) ^ Math.imul(c,2147483647);
+    h = Math.imul(h ^ h >>> 13,1274126177);
+    return ((h ^ h >>> 16) >>> 0) / 4294967295;
+  };
+  const mix = (a,b,t) => a + (b-a)*t;
+  const plane = k => mix(mix(hash(ix,iy,k),hash(ix+1,iy,k),u),mix(hash(ix,iy+1,k),hash(ix+1,iy+1,k),u),v);
+  return mix(plane(iz),plane(iz+1),w);
+}
+function field(x,y,z) {
+  return noise3(x,y,z)*.55 + noise3(x*2.03+17,y*2.03,z*2.03)*.27 + noise3(x*4.07,y*4.07+23,z*4.07)*.13 + noise3(x*8.11,y*8.11,z*8.11+9)*.05;
+}
+function surfaceMaps(data) {
+  const width = 1024, height = 512;
+  const create = () => { const c=document.createElement('canvas');c.width=width;c.height=height;return c; };
+  const mask = create(), ctx = mask.getContext('2d');
+  ctx.fillStyle='#fff';
   for (const feature of data.features) {
     const polygons = feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
     for (const polygon of polygons) {
       ctx.beginPath();
       for (const ring of polygon) {
-        ring.forEach(([lon, lat], index) => {
-          const x = (lon + 180) / 360 * canvas.width, y = (90 - lat) / 180 * canvas.height;
-          if (index) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-        });
+        ring.forEach(([lon,lat],i)=>{const x=(lon+180)/360*width,y=(90-lat)/180*height;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
         ctx.closePath();
       }
-      ctx.fill('evenodd'); ctx.stroke();
+      ctx.fill('evenodd');
     }
   }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping; texture.offset.x = .3;
-  texture.anisotropy = 4;
-  return texture;
+  const land = ctx.getImageData(0,0,width,height).data;
+  const relief=create(), roughness=create(), clouds=create(), tint=create();
+  const rctx=relief.getContext('2d'), qctx=roughness.getContext('2d'), cctx=clouds.getContext('2d'), tctx=tint.getContext('2d');
+  const r=rctx.createImageData(width,height),q=qctx.createImageData(width,height),c=cctx.createImageData(width,height),t=tctx.createImageData(width,height);
+  for(let y=0;y<height;y++) {
+    const lat=(.5-y/(height-1))*Math.PI, cos=Math.cos(lat), sy=Math.sin(lat);
+    for(let x=0;x<width;x++) {
+      const lon=x/(width-1)*Math.PI*2, sx=cos*Math.cos(lon), sz=cos*Math.sin(lon), i=(y*width+x)*4;
+      const ground=land[i+3]/255, broad=field(sx*3.8+4,sy*3.8,sz*3.8);
+      const ridge=Math.pow(1-Math.abs(noise3(sx*19,sy*19,sz*19)*2-1),3);
+      const elevation=(broad*.8+ridge*.2), h=92+ground*(20+elevation*72);
+      r.data[i]=r.data[i+1]=r.data[i+2]=h;r.data[i+3]=255;
+      q.data[i]=q.data[i+1]=q.data[i+2]=152+ground*(82+elevation*18);q.data[i+3]=255;
+      t.data[i]=t.data[i+1]=t.data[i+2]=180+elevation*75;t.data[i+3]=ground*255;
+      const vapor=field(sx*4.2+31,sy*5.6+7,sz*4.2+11);
+      const wisps=Math.max(0,Math.min(1,(vapor-.51)*5));
+      c.data[i]=239;c.data[i+1]=243;c.data[i+2]=231;c.data[i+3]=Math.pow(wisps,1.5)*155;
+    }
+  }
+  rctx.putImageData(r,0,0);qctx.putImageData(q,0,0);cctx.putImageData(c,0,0);tctx.putImageData(t,0,0);
+  return {relief:canvasTexture(relief),roughness:canvasTexture(roughness),clouds:canvasTexture(clouds,true),tint,mask};
+}
+function earthTexture(data, palette, details) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048; canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = palette.ocean; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const land = document.createElement('canvas');land.width=canvas.width;land.height=canvas.height;
+  const ink=land.getContext('2d');ink.drawImage(details.mask,0,0,land.width,land.height);
+  ink.globalCompositeOperation='source-in';ink.fillStyle=palette.land;ink.fillRect(0,0,land.width,land.height);
+  ctx.drawImage(land,0,0);
+  ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.48;ctx.drawImage(details.tint,0,0,canvas.width,canvas.height);
+  ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+  ctx.strokeStyle=palette.coast;ctx.lineWidth=.55;ctx.globalAlpha=.4;
+  for(const feature of data.features) {
+    const polygons=feature.geometry.type==='Polygon'?[feature.geometry.coordinates]:feature.geometry.coordinates;
+    for(const polygon of polygons){ctx.beginPath();for(const ring of polygon){ring.forEach(([lon,lat],i)=>{const x=(lon+180)/360*canvas.width,y=(90-lat)/180*canvas.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();}ctx.stroke();}
+  }
+  return canvasTexture(canvas,true);
 }
 
 function makeAircraft() {
@@ -97,10 +152,13 @@ export async function mountGlobe(container) {
   const ambient = new THREE.HemisphereLight('#f6f7ed', '#759478', 2); scene.add(ambient);
   const sun = new THREE.DirectionalLight('#fff5df', 2.3); sun.position.set(-3, 4, 5); scene.add(sun);
   const rim = new THREE.DirectionalLight('#b3d2cc', 1.1); rim.position.set(3, 1, -2); scene.add(rim);
-  const sphereMaterial = new THREE.MeshStandardMaterial({ roughness: .95, metalness: .025 });
+  const sphereMaterial = new THREE.MeshPhysicalMaterial({ roughness: .93, metalness: .015, ior: 1.33, specularIntensity: .48 });
   const initialTheme = document.documentElement.dataset.theme === 'dark' ? 1 : 0;
   const themeUniform = { value: initialTheme };
-  const dayTexture = earthTexture(data, lightPalette), nightTexture = earthTexture(data, darkPalette);
+  const details = surfaceMaps(data);
+  const dayTexture = earthTexture(data, lightPalette, details), nightTexture = earthTexture(data, darkPalette, details);
+  sphereMaterial.bumpMap = details.relief; sphereMaterial.bumpScale = .042;
+  sphereMaterial.roughnessMap = details.roughness;
   sphereMaterial.map = dayTexture;
   sphereMaterial.onBeforeCompile = shader => {
     shader.uniforms.nightMap = { value: nightTexture };
@@ -110,15 +168,18 @@ export async function mountGlobe(container) {
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', mapChunk);
   };
   const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), sphereMaterial); world.add(sphere);
-  const gridMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: .17, depthWrite: false });
+  const gridMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: .10, depthWrite: false });
   world.add(new THREE.LineSegments(gridGeometry(), gridMaterial));
 
+  const cloudMaterial = new THREE.MeshStandardMaterial({map:details.clouds,transparent:true,depthWrite:false,roughness:1,opacity:.18});
+  const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.008,80,48),cloudMaterial);world.add(clouds);
   const atmosphere = new THREE.ShaderMaterial({
-    uniforms: { glow: { value: new THREE.Color(lightPalette.halo) }, strength: { value: .17 } }, transparent: true, depthWrite: false, side: THREE.BackSide,
-    vertexShader: 'varying vec3 n;varying vec3 v;void main(){vec4 p=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=normalize(-p.xyz);gl_Position=projectionMatrix*p;}',
-    fragmentShader: 'uniform vec3 glow;uniform float strength;varying vec3 n;varying vec3 v;void main(){float a=pow(1.-abs(dot(normalize(n),normalize(v))),3.);gl_FragColor=vec4(glow,a*strength);}'
+    uniforms: {glow:{value:new THREE.Color(lightPalette.halo)},strength:{value:.24},sunDirection:{value:sun.position.clone().normalize()}},
+    transparent:true,depthWrite:false,side:THREE.BackSide,
+    vertexShader:'varying vec3 n;varying vec3 v;varying vec3 worldNormal;void main(){vec4 p=modelViewMatrix*vec4(position,1.);n=normalize(normalMatrix*normal);v=normalize(-p.xyz);worldNormal=normalize(mat3(modelMatrix)*normal);gl_Position=projectionMatrix*p;}',
+    fragmentShader:'uniform vec3 glow;uniform float strength;uniform vec3 sunDirection;varying vec3 n;varying vec3 v;varying vec3 worldNormal;void main(){float edge=pow(1.-abs(dot(normalize(n),normalize(v))),3.5);float daylight=smoothstep(-.4,.7,dot(normalize(worldNormal),sunDirection));gl_FragColor=vec4(glow,edge*strength*(.22+.78*daylight));}'
   });
-  world.add(new THREE.Mesh(new THREE.SphereGeometry(1.035, 64, 40), atmosphere));
+  world.add(new THREE.Mesh(new THREE.SphereGeometry(1.022,96,64),atmosphere));
 
   const route = new THREE.Group(); world.add(route);
   const futureVertices = [];
@@ -168,14 +229,17 @@ export async function mountGlobe(container) {
     for (const key of Object.keys(palette)) palette[key].copy(dayColors[key]).lerp(nightColors[key], themeMix);
     gridMaterial.color.copy(palette.grid); futureMaterial.color.copy(palette.future); trailMaterial.color.copy(palette.route); atmosphere.uniforms.glow.value.copy(palette.halo);
     markers.forEach(marker => marker.dot.material.color.copy(marker.progress <= progress ? palette.route : palette.future));
-    ambient.intensity = THREE.MathUtils.lerp(2, .65, themeMix);
+    ambient.intensity = THREE.MathUtils.lerp(1.65, .68, themeMix);
     // A warm upper-left sun and a weaker cool rim reveal the night-side shape.
-    sun.intensity = THREE.MathUtils.lerp(2.3, 2.1, themeMix); rim.intensity = THREE.MathUtils.lerp(1.1, .52, themeMix);
+    sun.intensity = THREE.MathUtils.lerp(2.15, 2.35, themeMix); rim.intensity = THREE.MathUtils.lerp(.85, .42, themeMix);
     sun.position.set(-3 - themeMix * .8, 4 - themeMix, 5 - themeMix * 1.4);
-    sun.color.set('#fff5df').lerp(new THREE.Color('#ecdfb9'),themeMix);
+    sun.color.set('#fff7e9').lerp(new THREE.Color('#f0ecdc'),themeMix);
     rim.position.set(3 + themeMix * .2, 1 - themeMix * .6, -2 + themeMix * .8);
-    atmosphere.uniforms.strength.value = .17 + themeMix * .04;
-    sphereMaterial.roughness = .95 - themeMix * .07;
+    atmosphere.uniforms.strength.value = .28 + themeMix * .07;
+    atmosphere.uniforms.sunDirection.value.copy(sun.position).normalize();
+    cloudMaterial.opacity = THREE.MathUtils.lerp(.16,.075,themeMix);
+    gridMaterial.opacity = THREE.MathUtils.lerp(.10,.085,themeMix);
+    sphereMaterial.roughness = .93 - themeMix * .04;
     renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .88, themeMix);
     return t < 1 && Math.abs(themeMix - themeTarget) > .0001;
   }
