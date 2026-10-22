@@ -1,11 +1,27 @@
 import * as THREE from './vendor/three.module.js';
-import {spherePoint} from './globe-math.js?v=20261022-memory-atlas';
+import {spherePoint} from './globe-math.js?v=20261022-soft-frontiers';
 
 export const VISITED_CITIES = Object.freeze([
   Object.freeze({name:'南京',country:'CHN',longitude:118.7778,latitude:32.0617,offset:[-62,-30]}),
   Object.freeze({name:'绍兴',country:'CHN',longitude:120.57,latitude:30,offset:[18,15]})
 ]);
 export const polygonsOf = feature => feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+export const COUNTRY_PICK_ZOOM = .86;
+export const canPickCountry = (zoom, scroll=0) => zoom >= COUNTRY_PICK_ZOOM && scroll < .15;
+// Retain geographic detail without drawing the same frontier twice or tracing coasts.
+export function sharedCountryEdges(features) {
+  const edges=new Map();
+  const key=point=>`${point[0].toFixed(5)},${point[1].toFixed(5)}`;
+  for(const feature of features)for(const polygon of polygonsOf(feature))for(const ring of polygon)for(let i=1;i<ring.length;i++){
+    const a=ring[i-1],b=ring[i],ka=key(a),kb=key(b);
+    if(ka===kb)continue;
+    const id=ka<kb?`${ka}/${kb}`:`${kb}/${ka}`;
+    const edge=edges.get(id);
+    if(edge)edge.owners.add(feature.properties.id);
+    else edges.set(id,{a,b,owners:new Set([feature.properties.id])});
+  }
+  return [...edges.values()].filter(edge=>edge.owners.size>1);
+}
 function inRing(longitude,latitude,ring) {
   let previous=ring[0][0], xs=[previous];
   for(let i=1;i<ring.length;i++) {let next=ring[i][0];while(next-previous>180)next-=360;while(next-previous< -180)next+=360;xs.push(next);previous=next;}
@@ -30,10 +46,10 @@ export function countryView(feature) {
   const extent=angles[Math.floor((angles.length-1)*.94)]||.15;
   return {longitude,latitude,distance:Math.max(1.38,Math.min(3,1+Math.sin(extent)/Math.tan(THREE.MathUtils.degToRad(15))))};
 }
-function borderGeometry(features) {
+function borderGeometry(edges) {
   const positions=[];
-  for(const feature of features)for(const polygon of polygonsOf(feature))for(const ring of polygon)for(let i=1;i<ring.length;i++) {
-    const a=new THREE.Vector3(...spherePoint(...ring[i-1],1.006)),b=new THREE.Vector3(...spherePoint(...ring[i],1.006));
+  for(const edge of edges) {
+    const a=new THREE.Vector3(...spherePoint(...edge.a,1.006)),b=new THREE.Vector3(...spherePoint(...edge.b,1.006));
     const steps=Math.max(1,Math.ceil(a.angleTo(b)/.025));
     let previous=a;
     for(let step=1;step<=steps;step++){const next=a.clone().lerp(b,step/steps).normalize().multiplyScalar(1.006);positions.push(...previous.toArray(),...next.toArray());previous=next;}
@@ -46,10 +62,10 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite}) {
   const material=new THREE.LineBasicMaterial({color:'#6c7a59',transparent:true,opacity:0,depthWrite:false});
   const selectedMaterial=new THREE.LineBasicMaterial({color:'#bc9d60',transparent:true,opacity:0,depthWrite:false});
   const selectedLine=new THREE.LineSegments(new THREE.BufferGeometry(),selectedMaterial);group.add(selectedLine);
-  let borders=null,features=[],selected=null,activeCity=null,open=false;
-  const trigger=document.createElement('button');trigger.className='atlas-trigger';trigger.type='button';trigger.innerHTML=icon+'<span>共同足迹</span><span class="atlas-count">2</span>';trigger.setAttribute('aria-expanded','false');trigger.setAttribute('aria-controls','memory-atlas');document.body.append(trigger);
+  let features=[],edges=[],selected=null,activeCity=null,open=false,currentZoom=0,currentScroll=0;
+  const trigger=document.createElement('button');trigger.className='atlas-trigger';trigger.type='button';trigger.innerHTML=icon+'<span>履痕</span><span class="atlas-count">2</span>';trigger.setAttribute('aria-expanded','false');trigger.setAttribute('aria-controls','memory-atlas');document.body.append(trigger);
   const panel=document.createElement('aside');panel.id='memory-atlas';panel.className='memory-atlas';panel.inert=true;panel.setAttribute('aria-label','两个人的回忆地图');
-  panel.innerHTML='<div class="atlas-heading"><span>我们的足迹</span><button type="button" class="atlas-close" aria-label="关闭回忆地图">×</button></div><label class="atlas-country-picker"><span class="atlas-country-label">一起走过</span><select aria-label="选择国家"></select></label><p class="atlas-summary"></p><div class="atlas-cities"></div><div class="atlas-city-detail" hidden><span class="atlas-detail-caption">留给我们</span><h3></h3><button type="button" class="atlas-write">写下这座城市的回忆 <span aria-hidden="true">↗</span></button></div>';
+  panel.innerHTML='<div class="atlas-heading"><span>履痕</span><button type="button" class="atlas-close" aria-label="关闭回忆地图">×</button></div><label class="atlas-country-picker"><span class="atlas-country-label">一起走过</span><select aria-label="选择国家"></select></label><p class="atlas-summary"></p><div class="atlas-cities"></div><div class="atlas-city-detail" hidden><span class="atlas-detail-caption">留给我们</span><h3></h3><button type="button" class="atlas-write">写下这座城市的回忆 <span aria-hidden="true">↗</span></button></div>';
   document.body.append(panel);
   const picker=panel.querySelector('select'),list=panel.querySelector('.atlas-cities'),summary=panel.querySelector('.atlas-summary'),detail=panel.querySelector('.atlas-city-detail');
   function setOpen(value){open=value;panel.classList.toggle('is-open',value);panel.inert=!value;trigger.setAttribute('aria-expanded',String(value));document.body.classList.toggle('atlas-open',value);}
@@ -61,7 +77,7 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite}) {
     summary.textContent=cities.length?`共同去过 ${cities.length} 座城市`:'下一段共同回忆，留给这里';
     list.replaceChildren();
     for(const item of cities){const button=document.createElement('button');button.type='button';button.className='atlas-city';button.dataset.city=item.name;button.innerHTML='<span class="atlas-city-star" aria-hidden="true">✧</span><span></span><span aria-hidden="true">↗</span>';button.children[1].textContent=item.name;button.addEventListener('click',()=>{showCity(item);onFocus({...item,distance:1.65});});list.append(button);}
-    selectedLine.geometry.dispose();selectedLine.geometry=borderGeometry([feature]);setOpen(true);if(city)showCity(city);
+    selectedLine.geometry.dispose();selectedLine.geometry=borderGeometry(edges.filter(edge=>edge.owners.has(feature.properties.id)));setOpen(true);if(city)showCity(city);
     onFocus(city?{...city,distance:1.65}:countryView(feature));
   }
   function close(){setOpen(false);selected=null;activeCity=null;onExit();}
@@ -80,20 +96,21 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite}) {
     label.addEventListener('pointerdown',event=>event.stopPropagation());label.addEventListener('click',()=>selectCountry(features.find(f=>f.properties.id===city.country),city));
     return {city,normal,dot,glow,label};
   });
-  const ready=fetch(new URL('./countries.geojson',import.meta.url)).then(response=>{if(!response.ok)throw Error('Country map unavailable');return response.json();}).then(data=>{
-    features=data.features;borders=new THREE.LineSegments(borderGeometry(features),material);group.add(borders);
+  const ready=fetch(new URL('./countries.geojson?v=20261022-soft-frontiers',import.meta.url)).then(response=>{if(!response.ok)throw Error('Country map unavailable');return response.json();}).then(data=>{
+    features=data.features;edges=sharedCountryEdges(features);group.add(new THREE.LineSegments(borderGeometry(edges),material));
     for(const feature of [...features].sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'zh'))){const option=document.createElement('option');option.value=feature.properties.id;option.textContent=feature.properties.name;picker.append(option);}
     trigger.disabled=false;
   }).catch(()=>{trigger.disabled=true;trigger.title='国界地图暂未载入，刷新后重试';});
   trigger.disabled=true;
   return {
     ready,
-    pick(longitude,latitude){const country=countryAt(features,longitude,latitude);if(country)selectCountry(country);return !!country;},
+    pick(longitude,latitude){if(!canPickCountry(currentZoom,currentScroll))return false;const country=countryAt(features,longitude,latitude);if(country)selectCountry(country);return !!country;},
     clear(){selected=null;activeCity=null;setOpen(false);},
     update({camera,zoom,scroll,themeMix}){
-      const reveal=THREE.MathUtils.smoothstep(zoom,.22,.65)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));
-      material.color.set('#75805f').lerp(new THREE.Color('#a0b491'),themeMix);material.opacity=reveal*(.52+themeMix*.06);
-      selectedMaterial.color.set('#8a6838').lerp(new THREE.Color('#dfc28c'),themeMix);selectedMaterial.opacity=selected?reveal*.95:0;
+      currentZoom=zoom;currentScroll=scroll;
+      const reveal=THREE.MathUtils.smoothstep(zoom,.65,.96)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));
+      material.color.set('#5f725e').lerp(new THREE.Color('#8d9a80'),themeMix);material.opacity=reveal*(.18+themeMix*.06);
+      selectedMaterial.color.set('#6d765d').lerp(new THREE.Color('#b39c71'),themeMix);selectedMaterial.opacity=selected?reveal*(.3+themeMix*.08):0;
       trigger.classList.toggle('is-visible',scroll<.2);panel.classList.toggle('is-away',scroll>.25);
       const lights=THREE.MathUtils.smoothstep(zoom,.42,.78)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));
       world.updateMatrixWorld(true);camera.updateMatrixWorld();

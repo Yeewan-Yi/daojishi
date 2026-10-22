@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-memory-atlas';
-import { mountSurfaceProgress } from './globe-labels.js?v=20261022-memory-atlas';
-import { mountMemoryMap } from './memory-map.js?v=20261022-memory-atlas';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-soft-frontiers';
+import { mountSurfaceProgress } from './globe-labels.js?v=20261022-soft-frontiers';
+import { mountMemoryMap } from './memory-map.js?v=20261022-soft-frontiers';
 
 const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#344d3b', future: '#637853', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#243b37', land: '#74886a', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
@@ -335,7 +335,7 @@ export async function mountGlobe(container) {
     atmosphere.uniforms.strength.value = .28 + themeMix * .07;
     atmosphere.uniforms.sunDirection.value.copy(sun.position).normalize();
     cloudMaterial.opacity = THREE.MathUtils.lerp(.035,.018,themeMix);
-    gridMaterial.opacity = THREE.MathUtils.lerp(.10,.085,themeMix);
+    gridMaterial.opacity = THREE.MathUtils.lerp(.10,.085,themeMix)*(1-THREE.MathUtils.smoothstep(cameraZoom,.5,.9)*.8);
     sphereMaterial.roughness = .93 - themeMix * .04;
     renderer.toneMappingExposure = THREE.MathUtils.lerp(1.04, .88, themeMix);
     return t < 1 && Math.abs(themeMix - themeTarget) > .0001;
