@@ -27,7 +27,7 @@ export function percentageParts(progress) {
   return { text, major: text.slice(0, -5), minor: text.slice(-5) };
 }
 
-// City-center coordinates; the journey crosses the North Pacific on a great circle.
+// City-center coordinates; take the opposite, longer arc of the same great circle.
 // GeoNames Seattle and Nanjing (1799962), rounded for a city-scale illustration.
 export const JOURNEY_CITIES = Object.freeze([
   Object.freeze({ name: '西雅图', longitude: -122.3321, latitude: 47.6062 }),
@@ -35,8 +35,9 @@ export const JOURNEY_CITIES = Object.freeze([
 ]);
 const departure = spherePoint(JOURNEY_CITIES[0].longitude, JOURNEY_CITIES[0].latitude);
 const destination = spherePoint(JOURNEY_CITIES[1].longitude, JOURNEY_CITIES[1].latitude);
-const routeAngle = Math.acos(Math.max(-1, Math.min(1, departure.reduce((sum, v, i) => sum + v * destination[i], 0))));
-const routeDirection = destination.map((v, i) => (v - departure[i] * Math.cos(routeAngle)) / Math.sin(routeAngle));
+const shortAngle = Math.acos(Math.max(-1, Math.min(1, departure.reduce((sum, v, i) => sum + v * destination[i], 0))));
+const routeAngle = Math.PI * 2 - shortAngle;
+const routeDirection = destination.map((v, i) => -(v - departure[i] * Math.cos(shortAngle)) / Math.sin(shortAngle));
 
 // Constant angular speed maps elapsed time to the same fraction of surface distance.
 export function routePoint(progress, radius = ROUTE_RADIUS) {

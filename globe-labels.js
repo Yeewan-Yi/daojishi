@@ -1,8 +1,8 @@
 import * as THREE from './vendor/three.module.js';
-import { JOURNEY_CITIES, aircraftBeacon, percentageParts, spherePoint, useAircraftLabel } from './globe-math.js?v=20261022-seattle-nanjing';
+import { JOURNEY_CITIES, aircraftBeacon, percentageParts, spherePoint, useAircraftLabel } from './globe-math.js?v=20261022-long-journey';
 
 export function mountSurfaceProgress(world, container) {
-  const longitude = -179, latitude = 40, width = 54, height = 18, columns = 48, rows = 16;
+  const longitude = -92, latitude = 14, width = 54, height = 18, columns = 48, rows = 16;
   const positions = [], normals = [], uvs = [], indices = [];
   for (let y = 0; y <= rows; y++) for (let x = 0; x <= columns; x++) {
     const normal = spherePoint(longitude + (x / columns - .5) * width, latitude + (.5 - y / rows) * height);
