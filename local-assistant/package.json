@@ -1,0 +1,1 @@
+{"name":"youqi-local-album-assistant","version":"0.1.0","private":true,"type":"module","scripts":{"analyze":"node analyze.mjs","start":"node server.mjs"},"dependencies":{"@huggingface/transformers":"3.8.1"}}

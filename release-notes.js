@@ -2,6 +2,7 @@ import {openModal,closeModal} from './motion.js';
 
 // Keep this list limited to changes included in the deployed site.
 export const releases=[
+  {version:'2026.10.23.2',date:'2026-10-23',title:'为回忆，选一组封面',items:['拾光支持展示共享封面，并可在封面大图之间连续翻看。照片助手可在本机进行画面主题识别、相似照片比较与封面初选，名称建议支持人工核对。']},
   {version:'2026.10.23.1',date:'2026-10-23',title:'把相册，带进每一城',items:[
     '拾光支持按月份浏览照片与视频，连续加载更多资料，也可以在大图中前后翻看。',
     '可以整批选择照片或导入文件夹，每批最多 200 份；上传中断后可重试未完成的资料。']},
