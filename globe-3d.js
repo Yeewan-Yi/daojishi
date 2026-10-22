@@ -376,7 +376,9 @@ export async function mountGlobe(container) {
     idleMix = motion.matches ? 0 : idleMix + ((idle ? 1 : 0) - idleMix) * follow;
     world.rotation.set(pitch + Math.sin(now / 19000) * .012 * idleMix, yaw + Math.sin(now / 23000) * .026 * idleMix, -.07);
     memories.update({camera,zoom:cameraZoom,scroll,themeMix});
-    markers.forEach(marker=>marker.dot.scale.setScalar(1-cameraZoom*.55));
+    markers.forEach(marker=>marker.dot.scale.setScalar(marker.progress===1
+      ? THREE.MathUtils.lerp(1,.06,THREE.MathUtils.smoothstep(cameraZoom,.42,.78))
+      : 1-cameraZoom*.55));
     surfaceProgress.update({camera,plane,progress:progress*100,phase,scroll,color:palette.route.getStyle(),zoom:cameraZoom});
     renderer.render(scene, camera);
     zoomChanging = false;
