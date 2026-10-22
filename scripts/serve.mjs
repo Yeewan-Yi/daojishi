@@ -6,6 +6,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=
 const allowed = new Set(['/index.html', '/styles.css', '/flight.css', '/refined.css', '/scene.css', '/fonts.css', '/globe-3d.js', '/globe-math.js', '/globe-labels.js', '/land.geojson', '/vendor/three.module.js', '/vendor/FZSongKeBenXiuKaiS.woff2', '/flight.js', '/flip-clock.js', '/app.js', '/countdown.js', '/cloud.js', '/config.js', '/favicon.svg', '/experiments/golden-wheel.html', '/experiments/golden-wheel.css', '/experiments/golden-wheel.js']);
 for (const file of ['/release-notes.js','/release-notes.css','/memory-map.js','/memory-map.css','/countries.geojson','/visited-cities.geojson','/journey-data.js','/symbols.js','/memories.html','/memories.css','/memories.js','/boot.js','/motion.js','/date-picker.js','/letter-media.js','/experience.css','/letters.js', '/letters-ui.js', '/letters.css']) allowed.add(file);
 const port = Number(process.argv[2] || 4173);
+allowed.add('/detail-land.geojson');
 http.createServer(async (req, res) => {
   try {
     const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);

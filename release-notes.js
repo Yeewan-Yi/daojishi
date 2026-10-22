@@ -2,6 +2,9 @@ import {openModal,closeModal} from './motion.js';
 
 // Keep this list limited to changes included in the deployed site.
 export const releases=[
+  {version:'2026.10.23.1',date:'2026-10-23',title:'把相册，带进每一城',items:[
+    '拾光支持按月份浏览照片与视频，连续加载更多资料，也可以在大图中前后翻看。',
+    '可以整批选择照片或导入文件夹，每批最多 200 份；上传中断后可重试未完成的资料。']},
   {version:'2026.10.22.3',date:'2026-10-22',title:'把走过的路，收入拾光',items:[
     '履痕支持手动点亮城市，按真实行政区域高亮；选中国家或城市后，可以继续放大查看省州与城市边界。',
     '新增淡蓝色的「拾光」，按城市收入照片与短视频，两个人可以查看历史，在每份影像旁留下评论。',

@@ -66,10 +66,14 @@ begin
   insert into youqi_private.journey_cities(room_id,city_id,name,country,region,longitude,latitude,geometry,visited) values(p_id,p->>'id',btrim(p->>'name'),case when p->>'country' in ('TWN','HKG','MAC') then 'CHN' else p->>'country' end,coalesce(p->>'region',''),(p->>'longitude')::double precision,(p->>'latitude')::double precision,f->'geometry',(p_payload->>'visited')::boolean)
   on conflict(room_id,city_id) do update set name=excluded.name,country=excluded.country,region=excluded.region,longitude=excluded.longitude,latitude=excluded.latitude,geometry=excluded.geometry,visited=excluded.visited,updated_at=now();update youqi_private.journey_books set revision=revision+1 where room_id=p_id;return jsonb_build_object('saved',true);
  end if;
+ if p_action='album' then
+  select coalesce(jsonb_agg(to_jsonb(t) order by month desc),'[]'::jsonb) into page from (select to_char(coalesce(taken_on,created_at::date),'YYYY-MM') as month,count(*)::integer as total,count(*) filter(where kind='image')::integer as images,count(*) filter(where kind='video')::integer as videos from youqi_private.journey_media where room_id=p_id and city_id=p_payload->>'city' and state='ready' group by 1)t;return jsonb_build_object('months',page);
+ end if;
  if p_action='list' then
   city:=p_payload->>'city';before_seq:=(p_payload->>'before')::bigint;
-  select coalesce(jsonb_agg(to_jsonb(t) order by seq desc),'[]'::jsonb),min(seq) into page,minimum_seq from (select mm.seq,mm.id,mm.kind,mm.mime,mm.width,mm.height,mm.duration,mm.title,mm.body,mm.taken_on,mm.created_at,mm.author_id as author,lp.name,mm.version from youqi_private.journey_media mm join youqi_private.letter_people lp on lp.id=mm.author_id where mm.room_id=p_id and mm.city_id=city and mm.state='ready' and (before_seq is null or mm.seq<before_seq) order by mm.seq desc limit 20)t;
-  select exists(select 1 from youqi_private.journey_media where room_id=p_id and city_id=city and state='ready' and seq<minimum_seq) into has_more;return jsonb_build_object('items',page,'cursor',case when has_more then minimum_seq else null end);
+  if coalesce(p_payload->>'kind','all') not in ('all','image','video') or coalesce(p_payload->>'month','')!~'^([0-9]{4}-(0[1-9]|1[0-2]))?$' then raise exception 'Invalid album filter' using errcode='22023';end if;
+  select coalesce(jsonb_agg(to_jsonb(t) order by seq desc),'[]'::jsonb),min(seq) into page,minimum_seq from (select mm.seq,mm.id,mm.kind,mm.mime,mm.width,mm.height,mm.duration,mm.title,mm.body,mm.taken_on,mm.created_at,mm.author_id as author,lp.name,mm.version from youqi_private.journey_media mm join youqi_private.letter_people lp on lp.id=mm.author_id where mm.room_id=p_id and mm.city_id=city and mm.state='ready' and (before_seq is null or mm.seq<before_seq) and (coalesce(p_payload->>'kind','all')='all' or mm.kind=p_payload->>'kind') and (coalesce(p_payload->>'month','')='' or to_char(coalesce(mm.taken_on,mm.created_at::date),'YYYY-MM')=p_payload->>'month') order by mm.seq desc limit 20)t;
+  select exists(select 1 from youqi_private.journey_media where room_id=p_id and city_id=city and state='ready' and seq<minimum_seq and (coalesce(p_payload->>'kind','all')='all' or kind=p_payload->>'kind') and (coalesce(p_payload->>'month','')='' or to_char(coalesce(taken_on,created_at::date),'YYYY-MM')=p_payload->>'month')) into has_more;return jsonb_build_object('items',page,'cursor',case when has_more then minimum_seq else null end);
  end if;
  media_id:=(p_payload->>'media_id')::uuid;
  if p_action like 'media_%' then
@@ -93,7 +97,7 @@ begin
    perform pg_advisory_xact_lock(hashtext('youqi_journey_storage'));
    select * into m from youqi_private.journey_media where id=media_id;
    if found then if m.room_id<>p_id or m.author_id<>person.id or m.city_id<>city or m.bytes<>size_bytes or m.thumb_bytes<>thumb_size or m.state='deleted' then raise exception 'No media access' using errcode='42501';end if;return to_jsonb(m);end if;
-   if (select count(*) from youqi_private.journey_media where author_id=person.id and created_at>now()-interval '1 day')>=100 then raise exception 'Daily upload limit' using errcode='P0001';end if;
+   if (select count(*) from youqi_private.journey_media where author_id=person.id and created_at>now()-interval '1 day')>=1000 then raise exception 'Daily upload limit' using errcode='P0001';end if;
    select coalesce(sum(bytes+thumb_bytes),0) into used_bytes from youqi_private.journey_media where journey_media.provider=provider;
    if provider='supabase' then used_bytes:=greatest(used_bytes,(select coalesce(sum((metadata->>'size')::bigint),0) from storage.objects where bucket_id='youqi-journey'))+(select coalesce(sum((metadata->>'size')::bigint),0) from storage.objects where bucket_id<>'youqi-journey');end if;
    if used_bytes+size_bytes+thumb_size>(case when provider='r2' then 7000000000 else 700000000 end) then raise exception 'Archive capacity reached; expand storage before upload' using errcode='P0001';end if;

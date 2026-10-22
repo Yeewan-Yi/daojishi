@@ -1,8 +1,20 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 import {validCity,normalizedCity,validMediaPage,validCommentsPage,JourneyClient} from '../journey-data.js';
-import {countryAt,sharedCountryEdges,citySurfaceGeometry} from '../memory-map.js';
+import {countryAt,sharedCountryEdges,citySurfaceGeometry,canPickCountry} from '../memory-map.js';
 import {detailZoomInput} from '../globe-math.js';
+import {spherePoint} from '../globe-math.js';
 const defaults=JSON.parse(fs.readFileSync(new URL('../visited-cities.geojson',import.meta.url))).features;
+test('an active city map remains selectable independently of the overview zoom threshold',()=>{assert.equal(canPickCountry(.4,0,true),true);assert.equal(canPickCountry(.4,0,false),false);assert.equal(canPickCountry(1,.5,true),false);});
+
+test('magnified land triangles share complete edges without exposing interior ocean cracks',()=>{
+ const ring=[[-8,-5],[7,-5],[7,6],[-8,6],[-8,-5]],g=citySurfaceGeometry({geometry:{type:'Polygon',coordinates:[ring]}},1,.03),p=g.attributes.position,edges=new Map();
+ const point=i=>[p.getX(i),p.getY(i),p.getZ(i)],key=v=>v.map(x=>x.toFixed(6)).join(',');
+ for(let i=0;i<p.count;i+=3)for(const [a,b] of [[i,i+1],[i+1,i+2],[i+2,i]]){const x=point(a),y=point(b),id=[key(x),key(y)].sort().join('/');const e=edges.get(id)||{x,y,count:0};e.count++;edges.set(id,e);}
+ const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+ const borders=ring.slice(1).map((b,i)=>cross(spherePoint(...ring[i]),spherePoint(...b)));
+ for(const edge of edges.values())if(edge.count===1)assert.ok(borders.some(n=>Math.abs(dot(n,edge.x))<1e-6&&Math.abs(dot(n,edge.y))<1e-6),'Only the outside shore can have an unpaired mesh edge');
+ g.dispose();
+});
 test('default city areas and all selectable Chinese city polygons are valid, with stable IDs',()=>{
  for(const feature of defaults)assert.ok(normalizedCity(feature).properties.id.startsWith('cn:'));
  const paths=fs.readdirSync(new URL('../map-data',import.meta.url)).filter(n=>/^cities-\d{6}\.json$/.test(n));let total=0;

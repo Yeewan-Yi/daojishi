@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, detailZoomInput, detailMapFov, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-journey';
-import { mountSurfaceProgress } from './globe-labels.js?v=20261022-journey';
-import { mountMemoryMap } from './memory-map.js?v=20261022-journey';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, detailZoomInput, detailMapFov, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-album';
+import { mountSurfaceProgress } from './globe-labels.js?v=20261022-album';
+import { mountMemoryMap } from './memory-map.js?v=20261022-album';
 
 const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#344d3b', future: '#637853', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#243b37', land: '#74886a', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
@@ -234,6 +234,7 @@ export async function mountGlobe(container) {
   const sphereMaterial = new THREE.MeshPhysicalMaterial({ roughness: .93, metalness: .015, ior: 1.33, specularIntensity: .18 });
   const initialTheme = document.documentElement.dataset.theme === 'dark' ? 1 : 0;
   const themeUniform = { value: initialTheme };
+  const vectorMix={value:0},vectorOcean={value:new THREE.Color()};
   const details = surfaceMaps(data);
   const dayTexture = earthTexture(data, lightPalette, details), nightTexture = earthTexture(data, darkPalette, details);
   sphereMaterial.bumpMap = details.relief; sphereMaterial.bumpScale = .014;
@@ -242,9 +243,10 @@ export async function mountGlobe(container) {
   sphereMaterial.onBeforeCompile = shader => {
     shader.uniforms.nightMap = { value: nightTexture };
     shader.uniforms.themeBlend = themeUniform;
-    shader.fragmentShader = 'uniform sampler2D nightMap;uniform float themeBlend;\n' + shader.fragmentShader;
+    shader.uniforms.vectorMix=vectorMix;shader.uniforms.vectorOcean=vectorOcean;
+    shader.fragmentShader = 'uniform sampler2D nightMap;uniform float themeBlend;uniform float vectorMix;uniform vec3 vectorOcean;\n' + shader.fragmentShader;
     const mapChunk = THREE.ShaderChunk.map_fragment.replace('vec4 sampledDiffuseColor = texture2D( map, vMapUv );', 'vec4 sampledDiffuseColor = mix(texture2D(map,vMapUv),texture2D(nightMap,vMapUv),themeBlend);');
-    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', mapChunk);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', mapChunk+'\ndiffuseColor.rgb=mix(diffuseColor.rgb,vectorOcean,vectorMix);');
   };
   const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64), sphereMaterial); world.add(sphere);
   const gridMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: .10, depthWrite: false });
@@ -388,6 +390,8 @@ export async function mountGlobe(container) {
     world.rotation.set(pitch + Math.sin(now / 19000) * .012 * idleMix, yaw + Math.sin(now / 23000) * .026 * idleMix, -.07);
     route.visible=phase!=='pending'&&scroll<.5&&(!selectedView||cameraDistance>1.7);
     memories.update({camera,zoom:cameraZoom,scroll,themeMix,detail:detailZoom});
+    vectorMix.value=memories.surfaceMix;vectorOcean.value.set('#d8e5dd').lerp(new THREE.Color('#243b37'),themeMix);sphereMaterial.bumpScale=.014*(1-vectorMix.value);clouds.visible=vectorMix.value<.01;
+    gridMaterial.opacity*=1-vectorMix.value;
     markers.forEach(marker=>marker.dot.scale.setScalar(marker.progress===1
       ? THREE.MathUtils.lerp(1,.06,THREE.MathUtils.smoothstep(cameraZoom,.42,.78))
       : 1-cameraZoom*.55));

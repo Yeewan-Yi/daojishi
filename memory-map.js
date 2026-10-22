@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
-import {JourneyClient,journeyLink,journeyContext,validCity,normalizedCity} from './journey-data.js?v=20261022-journey';
-import {trailMark,memoryMark} from './symbols.js?v=20261022-journey';
-import {spherePoint} from './globe-math.js?v=20261022-journey';
+import {JourneyClient,journeyLink,journeyContext,validCity,normalizedCity} from './journey-data.js?v=20261022-album';
+import {trailMark,memoryMark} from './symbols.js?v=20261022-album';
+import {spherePoint} from './globe-math.js?v=20261022-album';
 
 export const VISITED_CITIES = Object.freeze([
   Object.freeze({name:'南京',country:'CHN',longitude:118.7778,latitude:32.0617,offset:[-100,-38]}),
@@ -9,7 +9,7 @@ export const VISITED_CITIES = Object.freeze([
 ]);
 export const polygonsOf = feature => feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
 export const COUNTRY_PICK_ZOOM = .86;
-export const canPickCountry = (zoom, scroll=0) => zoom >= COUNTRY_PICK_ZOOM && scroll < .15;
+export const canPickCountry = (zoom, scroll=0,hasSelection=false) => (hasSelection||zoom >= COUNTRY_PICK_ZOOM) && scroll < .15;
 // Retain geographic detail without drawing the same frontier twice or tracing coasts.
 export function sharedCountryEdges(features) {
   const edges=new Map();
@@ -52,10 +52,10 @@ export function countryView(feature) {
 export function citySurfaceGeometry(feature,radius=1.011,maxEdge=.012) {
   const positions=[];
   function triangle(a,b,c){
-    if(Math.max(a.distanceTo(b),b.distanceTo(c),c.distanceTo(a))>maxEdge){
-      const ab=a.clone().add(b).normalize(),bc=b.clone().add(c).normalize(),ca=c.clone().add(a).normalize();
-      triangle(a,ab,ca);triangle(ab,b,bc);triangle(ca,bc,c);triangle(ab,bc,ca);return;
-    }
+    const ab=a.distanceTo(b),bc=b.distanceTo(c),ca=c.distanceTo(a),longest=Math.max(ab,bc,ca);
+    // Split only the offending edge. Splitting all three edges introduced T-junctions
+    // on adjacent triangles, exposing dark ocean cracks at high magnification.
+    if(longest>maxEdge){if(longest===ab){const m=a.clone().add(b).normalize();triangle(a,m,c);triangle(m,b,c);}else if(longest===bc){const m=b.clone().add(c).normalize();triangle(a,b,m);triangle(a,m,c);}else{const m=c.clone().add(a).normalize();triangle(a,b,m);triangle(m,b,c);}return;}
     positions.push(...a.clone().multiplyScalar(radius).toArray(),...b.clone().multiplyScalar(radius).toArray(),...c.clone().multiplyScalar(radius).toArray());
   }
   for(const polygon of polygonsOf(feature)){
@@ -65,7 +65,7 @@ export function citySurfaceGeometry(feature,radius=1.011,maxEdge=.012) {
       triangle(...face.map(i=>new THREE.Vector3(...spherePoint(points[i].x,points[i].y))));
     }
   }
-  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.computeVertexNormals();return geometry;
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));const normals=new Float32Array(positions.length);for(let i=0;i<positions.length;i+=3){const length=Math.hypot(positions[i],positions[i+1],positions[i+2]);for(let j=0;j<3;j++)normals[i+j]=positions[i+j]/length;}geometry.setAttribute('normal',new THREE.BufferAttribute(normals,3));return geometry;
 }
 function cityOutlineGeometry(feature){
   const edges=polygonsOf(feature).flatMap(polygon=>polygon.flatMap(ring=>ring.slice(1).map((b,i)=>({a:ring[i],b}))));
@@ -92,6 +92,8 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite,onDetailZ
   const coastMaterial=new THREE.LineBasicMaterial({transparent:true,opacity:0,depthWrite:false});
   const landMaterial=new THREE.MeshStandardMaterial({color:'#a0b78f',transparent:true,opacity:0,roughness:.94,depthWrite:false,side:THREE.DoubleSide});
   const selectedLine=new THREE.LineSegments(new THREE.BufferGeometry(),selectedMaterial),regionLines=new THREE.LineSegments(new THREE.BufferGeometry(),regionMaterial),coast=new THREE.LineSegments(new THREE.BufferGeometry(),coastMaterial),detailedLand=new THREE.Mesh(new THREE.BufferGeometry(),landMaterial);group.add(selectedLine,regionLines,coast,detailedLand);
+  const vectorMaterial=new THREE.MeshStandardMaterial({transparent:true,opacity:0,roughness:.94,depthWrite:false,side:THREE.DoubleSide}),vectorLand=new THREE.Mesh(new THREE.BufferGeometry(),vectorMaterial);vectorLand.renderOrder=2;group.add(vectorLand);let vectorReady=false,vectorPromise=null,surfaceMix=0;
+  function prepareVectorLand(){if(vectorPromise)return vectorPromise;vectorPromise=fetch(new URL('./detail-land.geojson?v=20261022-album',import.meta.url)).then(r=>{if(!r.ok)throw Error('Detailed terrain unavailable');return r.json();}).then(data=>{disposeGeometry(vectorLand,citySurfaceGeometry({geometry:{type:'MultiPolygon',coordinates:data.features.flatMap(polygonsOf)}},1.002,.045));vectorReady=true;onChange();}).catch(()=>{vectorPromise=null;});return vectorPromise;}
   const candidateLines=new THREE.LineSegments(new THREE.BufferGeometry(),candidateMaterial),previewArea=new THREE.Mesh(new THREE.BufferGeometry(),previewMaterial),previewEdge=new THREE.LineSegments(new THREE.BufferGeometry(),previewEdgeMaterial);group.add(candidateLines,previewArea,previewEdge);let previewKey='';
   const patchCenter={value:new THREE.Vector3(0,0,1)},patchRadius={value:.08};
   function patchMaterial(){const m=new THREE.MeshStandardMaterial({transparent:true,opacity:0,roughness:.94,depthWrite:false,side:THREE.DoubleSide});m.onBeforeCompile=shader=>{shader.uniforms.patchCenter=patchCenter;shader.uniforms.patchRadius=patchRadius;shader.vertexShader='varying vec3 vPatchLocal;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvPatchLocal=position;');shader.fragmentShader='varying vec3 vPatchLocal;uniform vec3 patchCenter;uniform float patchRadius;\n'+shader.fragmentShader.replace('#include <alphatest_fragment>','diffuseColor.a *= 1.-smoothstep(patchRadius*.7,patchRadius,length(normalize(vPatchLocal)-patchCenter));\n#include <alphatest_fragment>');};m.customProgramCacheKey=()=> 'youqi-local-coast-v1';return m;}
@@ -123,14 +125,16 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite,onDetailZ
   function focusFeature(feature){const view=countryView(feature);onFocus({...view,distance:feature.properties.country?Math.max(1.10,Math.min(1.65,view.distance)):view.distance});}
   function selectCity(feature){activeCity=normalizedCity(feature);const country=features.find(f=>f.properties.id===activeCity.properties.country);if(country&&selected?.properties.id!==country.properties.id)selectCountry(country,{keepCity:true});setOpen(true);refreshDetail();focusFeature(activeCity);}
   async function selectRegion(id){
+    activeCity=null;refreshDetail();
     selectedRegion=regions.find(f=>f.properties.id===id)||null;candidates=[];disposeGeometry(candidateLines);cityPicker.replaceChildren(new Option('正在准备城市…',''));const generation=++cityLoad;searchResults.hidden=true;
     if(!selectedRegion){cityPicker.replaceChildren(new Option('先选择省州地区',''));searchForm.hidden=selected?.properties.id==='CHN';return;}
     focusFeature(selectedRegion);searchForm.hidden=selected?.properties.id==='CHN'&&id!=='710000';
     if(selected?.properties.id==='CHN'&&id!=='710000')try{const data=await loadData(`cities-${id}`);if(generation!==cityLoad)return;candidates=data.features.map(validCity);disposeGeometry(candidateLines,borderGeometry(sharedCountryEdges(candidates)));cityPicker.replaceChildren(new Option('选择要点亮的城市',''));for(const f of candidates)cityPicker.append(new Option(f.properties.name,f.properties.id));}catch{if(generation===cityLoad){error.textContent='城市地图暂未载入，请稍后重试。';cityPicker.replaceChildren(new Option('暂时无法载入城市',''));}}else cityPicker.replaceChildren(new Option('在下方搜索城市',''));
     onChange();
   }
-  async function loadData(id){if(dataCache.has(id))return dataCache.get(id);const promise=fetch(new URL(`./map-data/${id}.json?v=20261022-journey`,import.meta.url)).then(r=>{if(!r.ok)throw Error('地图暂不可用');return r.json();}).catch(e=>{dataCache.delete(id);throw e;});dataCache.set(id,promise);return promise;}
+  async function loadData(id){if(dataCache.has(id))return dataCache.get(id);const promise=fetch(new URL(`./map-data/${id}.json?v=20261022-album`,import.meta.url)).then(r=>{if(!r.ok)throw Error('地图暂不可用');return r.json();}).catch(e=>{dataCache.delete(id);throw e;});dataCache.set(id,promise);return promise;}
   async function selectCountry(feature,{keepCity=false}={}){
+    prepareVectorLand();
     if(!feature)return;const generation=++countryLoad;selected=feature;regions=[];selectedRegion=null;candidates=[];cityLoad++;picker.value=feature.properties.id;regionPicker.replaceChildren(new Option('正在准备地区…',''));cityPicker.replaceChildren(new Option('先选择省州地区',''));if(!keepCity)activeCity=null;error.textContent=connectionError;searchResults.hidden=true;searchForm.hidden=feature.properties.id==='CHN';disposeGeometry(regionLines);disposeGeometry(candidateLines);disposeGeometry(patchOcean);disposeGeometry(patchLand);disposeGeometry(detailedLand);disposeGeometry(coast);disposeGeometry(selectedLine,borderGeometry(edges.filter(e=>e.owners.has(feature.properties.id))));setOpen(true);refreshCities();if(!keepCity)focusFeature(feature);
     try{const data=await loadData(feature.properties.id);if(generation!==countryLoad)return;regions=data.regions;regionPicker.replaceChildren(new Option('全部地区',''));for(const f of regions)regionPicker.append(new Option(f.properties.name,f.properties.id));disposeGeometry(regionLines,borderGeometry(sharedCountryEdges(regions)));disposeGeometry(coast,cityOutlineGeometry(data.country).scale(1.005/1.012,1.005/1.012,1.005/1.012));disposeGeometry(detailedLand,citySurfaceGeometry(data.country,1.002,.025));if(data.neighborhood){patchCenter.value.set(...spherePoint(...data.neighborhood.center));patchRadius.value=data.neighborhood.radius;disposeGeometry(patchOcean,citySurfaceGeometry(data.neighborhood.ocean,1.0008,.02));disposeGeometry(patchLand,citySurfaceGeometry(data.neighborhood.land,1.0015,.02));}onChange();}catch{if(generation===countryLoad){regionPicker.replaceChildren(new Option('地区暂未载入',''));error.textContent='详细地图暂未载入，已有履痕仍可查看。';}}
   }
@@ -146,19 +150,25 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite,onDetailZ
   addEventListener('keydown',e=>{if(e.key==='Escape'&&open&&!document.querySelector('dialog[open]')){e.stopImmediatePropagation();e.preventDefault();close();trigger.focus({preventScroll:true});}},true);
   async function syncCities(){if(syncing||document.hidden)return;syncing=true;try{const nextContext=journeyContext();if(JSON.stringify(nextContext)!==JSON.stringify(context)){context=nextContext;client=new JourneyClient(context);portal.href=journeyLink('memories.html');}const next=await client.cities(),signature=JSON.stringify(next);connectionError='';if(signature!==revision){revision=signature;installCities(next);}}catch(e){connectionError=e.message;if(open)error.textContent=e.message;if(!pins.length){try{const data=await fetch('./visited-cities.geojson').then(r=>r.json());installCities(data.features);}catch{}}}finally{syncing=false;}}
   addEventListener('journey-cities-changed',syncCities);addEventListener('storage',e=>{if(e.key?.startsWith('youqi.journey')||e.key?.startsWith('youqi.letters.identity'))syncCities();});setInterval(syncCities,12000);
-  const countryReady=fetch(new URL('./countries.geojson?v=20261022-journey',import.meta.url)).then(r=>{if(!r.ok)throw Error('Country map unavailable');return r.json();}).then(data=>{features=data.features;edges=sharedCountryEdges(features);group.add(new THREE.LineSegments(borderGeometry(edges),material));for(const f of [...features].sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'zh')))picker.append(new Option(f.properties.name,f.properties.id));trigger.disabled=false;}).catch(()=>{trigger.disabled=true;trigger.title='地图暂未载入，刷新后重试';});trigger.disabled=true;
+  const countryReady=fetch(new URL('./countries.geojson?v=20261022-album',import.meta.url)).then(r=>{if(!r.ok)throw Error('Country map unavailable');return r.json();}).then(data=>{features=data.features;edges=sharedCountryEdges(features);group.add(new THREE.LineSegments(borderGeometry(edges),material));for(const f of [...features].sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'zh')))picker.append(new Option(f.properties.name,f.properties.id));trigger.disabled=false;}).catch(()=>{trigger.disabled=true;trigger.title='地图暂未载入，刷新后重试';});trigger.disabled=true;
   const citiesReady=syncCities();
   return {
+    get surfaceMix(){return surfaceMix;},
     ready:Promise.all([countryReady,citiesReady]),
-    pick(longitude,latitude){if(!canPickCountry(currentZoom,currentScroll))return false;const city=countryAt([...cityFeatures,...candidates],longitude,latitude);if(city){selectCity(city);return true;}const country=countryAt(features,longitude,latitude);if(selected&&country?.properties.id===selected.properties.id){const region=countryAt(regions,longitude,latitude);if(region){regionPicker.value=region.properties.id;selectRegion(region.properties.id);return true;}}if(country)selectCountry(country);return !!country;},
+    pick(longitude,latitude){if(!canPickCountry(currentZoom,currentScroll,!!selected))return false;const city=countryAt([...candidates,...cityFeatures],longitude,latitude);if(city){selectCity(city);return true;}const country=countryAt(features,longitude,latitude);if(selected&&country?.properties.id===selected.properties.id){const region=countryAt(regions,longitude,latitude);if(region){regionPicker.value=region.properties.id;selectRegion(region.properties.id);return true;}}if(country)selectCountry(country);return !!country;},
     clear(){countryLoad++;cityLoad++;selected=null;activeCity=null;selectedRegion=null;setOpen(false);},
     update({camera,zoom,scroll,themeMix,detail=0}){
       currentZoom=zoom;currentScroll=scroll;detailZoom=detail;
+      const targetSurface=selected&&vectorReady?1:0;surfaceMix+=(targetSurface-surfaceMix)*.16;if(Math.abs(surfaceMix-targetSurface)<.002)surfaceMix=targetSurface;else onChange();vectorMaterial.color.set('#a0b78f').lerp(new THREE.Color('#74886a'),themeMix);vectorMaterial.opacity=surfaceMix;vectorLand.visible=surfaceMix>.001;
       const reveal=THREE.MathUtils.smoothstep(zoom,.65,.96)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));
       material.color.set('#465e4b').lerp(new THREE.Color('#8d9a80'),themeMix);material.opacity=reveal*THREE.MathUtils.lerp(.44,.24,themeMix);
       selectedMaterial.color.set('#56664b').lerp(new THREE.Color('#b39c71'),themeMix);selectedMaterial.opacity=selected?reveal*THREE.MathUtils.lerp(.58,.38,themeMix):0;
       const selectedReveal=selected?reveal:0;patchOceanMaterial.color.set('#d8e5dd').lerp(new THREE.Color('#243b37'),themeMix);patchLandMaterial.color.set('#a0b78f').lerp(new THREE.Color('#74886a'),themeMix);patchOceanMaterial.opacity=patchLandMaterial.opacity=selectedReveal;patchOcean.visible=patchLand.visible=selectedReveal>.01;landMaterial.color.set('#a0b78f').lerp(new THREE.Color('#74886a'),themeMix);landMaterial.opacity=selectedReveal;detailedLand.visible=selectedReveal>.01;
       coastMaterial.color.set('#6f8668').lerp(new THREE.Color('#879b7d'),themeMix);coastMaterial.opacity=selectedReveal*.5;
+      // Once the complete vector surface is ready, retire all overlapping local
+      // coast patches and raster edges together. Their differing sources caused halos.
+      patchOcean.visible=patchLand.visible=detailedLand.visible=coast.visible=surfaceMix<.01;
+      material.opacity*=1-surfaceMix;selectedMaterial.opacity*=1-surfaceMix;
       regionMaterial.color.set('#576d64').lerp(new THREE.Color('#a4b8b0'),themeMix);regionMaterial.opacity=selectedReveal*THREE.MathUtils.lerp(.34,.25,themeMix);candidateMaterial.color.copy(regionMaterial.color);candidateMaterial.opacity=selectedReveal*.2;previewMaterial.color.set('#7b9b99').lerp(new THREE.Color('#b1d0cc'),themeMix);previewMaterial.opacity=selectedReveal*.22;previewEdgeMaterial.color.copy(previewMaterial.color);previewEdgeMaterial.opacity=selectedReveal*.7;
       trigger.classList.toggle('is-visible',scroll<.2);portal.classList.toggle('is-away',scroll>.2);attribution.style.opacity=scroll>.2?'0':'.6';panel.classList.toggle('is-away',scroll>.25);
       const lights=THREE.MathUtils.smoothstep(zoom,.42,.78)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));

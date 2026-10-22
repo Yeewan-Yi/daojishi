@@ -1,12 +1,12 @@
-import {brandMark} from './symbols.js?v=20261022-journey';
-import {mountReleaseNotes} from './release-notes.js?v=20261022-notes';
-import {journeyLink} from './journey-data.js?v=20261022-journey';
+import {brandMark} from './symbols.js?v=20261022-album';
+import {mountReleaseNotes} from './release-notes.js?v=20261022-album';
+import {journeyLink} from './journey-data.js?v=20261022-album';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
-import { mountFlight, flightStage } from './flight.js?v=20261022-journey';
+import { mountFlight, flightStage } from './flight.js?v=20261022-album';
 import { mountFlipClock } from './flip-clock.js';
-import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261022-journey';
-import { mountLetters } from './letters-ui.js?v=20261022-journey';
+import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261022-album';
+import { mountLetters } from './letters-ui.js?v=20261022-album';
 import {startBoot} from './boot.js?v=20261021-experience';
 import {openModal,closeModal,bindModalMotion} from './motion.js?v=20261021-experience';
 import {mountDatePicker} from './date-picker.js?v=20261021-experience';
@@ -515,7 +515,7 @@ addEventListener('journey-city-memory',event=>{const city=event.detail?.city;if(
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-const globeReady=import('./globe-3d.js?v=20261022-journey').then(async ({ mountGlobe }) => {
+const globeReady=import('./globe-3d.js?v=20261022-album').then(async ({ mountGlobe }) => {
   boot.advance(.65);
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;
