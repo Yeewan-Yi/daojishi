@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Install database verifier
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Verify syntax and countdown behavior
         run: |
           node --check app.js
@@ -29,6 +31,8 @@ jobs:
           node --check flight.js
           node --check flip-clock.js
           node --check memory-map.js
+          node --check journey-data.js
+          node --check memories.js
           node --check globe-3d.js
           node --check globe-math.js
           node --check globe-labels.js
@@ -39,12 +43,15 @@ jobs:
           node --check boot.js
           node --check motion.js
           node --test
+          node scripts/verify-journey-db.mjs
       - name: Prepare public files
         run: |
           mkdir _site
           cp index.html styles.css flight.css refined.css scene.css fonts.css flight.js flip-clock.js app.js countdown.js cloud.js config.js favicon.svg _site/
           cp globe-3d.js globe-math.js globe-labels.js memory-map.js memory-map.css countries.geojson visited-cities.geojson land.geojson _site/
           cp letters.js letters-ui.js letters.css boot.js motion.js date-picker.js letter-media.js experience.css _site/
+          cp memories.html memories.css memories.js journey-data.js symbols.js _site/
+          cp -r map-data _site/
           mkdir _site/vendor
           cp vendor/three.module.js vendor/THREE-LICENSE vendor/FONT-LICENSES.txt vendor/FZSongKeBenXiuKaiS.woff2 _site/vendor/
           touch _site/.nojekyll

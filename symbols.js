@@ -1,0 +1,4 @@
+export const brandMark='<svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M20 3 34 11v18L20 37 6 29V11Z"/><path d="M13 11h14m-14 18h14M15 12c0 7 10 9 10 16M25 12c0 7-10 9-10 16M10 21c7-5 14-5 21-1m-4-4 4 4-5 2"/></svg>';
+export const trailMark='<svg viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M6 30c-2-8 9-6 10-13S28 8 30 3" stroke-dasharray="2 3"/><path d="M10 11c-2-4-1-7 1-8s5 2 5 6l-1 3-4 1Zm2 5 4-1 1 4-4 1Zm10 6c-2-4-1-7 1-8s5 2 5 6l-1 3-4 1Zm2 5 4-1 1 4-4 1Z"/><path d="m29 3 3 2-3 2-3-2Z"/></svg>';
+export const memoryMark='<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M5 5h15l7 7v15H5ZM20 5v8h7M9 22l5-6 4 4 3-3 3 5M9 9h6"/><circle cx="12" cy="13" r="1"/></svg>';
+export const backMark='<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M25 16H7m8-8-8 8 8 8M25 6h3v20h-3"/></svg>';

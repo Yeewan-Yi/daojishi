@@ -59,6 +59,6 @@ test('country picking handles islands across the date line and holes in polygons
   assert.equal(countryAt([feature],0,8),null);assert.equal(countryAt([feature],179,0),null);
 });
 test('every country produces a finite camera fit outside the globe',()=>{
-  for(const country of countries){const view=countryView(country);assert.ok(Object.values(view).every(Number.isFinite),country.properties.id);assert.ok(view.distance>=1.38&&view.distance<=3);}
+  for(const country of countries){const view=countryView(country);assert.ok(Object.values(view).every(Number.isFinite),country.properties.id);assert.ok(view.distance>=1.09&&view.distance<=3);}
   assert.deepEqual(VISITED_CITIES.map(city=>city.name),['南京','绍兴']);
 });

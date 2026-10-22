@@ -1,9 +1,11 @@
+import {brandMark} from './symbols.js?v=20261022-journey';
+import {journeyLink} from './journey-data.js?v=20261022-journey';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
-import { mountFlight, flightStage } from './flight.js?v=20261022-city-areas';
+import { mountFlight, flightStage } from './flight.js?v=20261022-journey';
 import { mountFlipClock } from './flip-clock.js';
-import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261022-city-areas';
-import { mountLetters } from './letters-ui.js?v=20261022-city-areas';
+import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261022-journey';
+import { mountLetters } from './letters-ui.js?v=20261022-journey';
 import {startBoot} from './boot.js?v=20261021-experience';
 import {openModal,closeModal,bindModalMotion} from './motion.js?v=20261021-experience';
 import {mountDatePicker} from './date-picker.js?v=20261021-experience';
@@ -145,7 +147,7 @@ function initialize() {
   const params = new URLSearchParams(location.hash.slice(1));
   try {
     room = roomFromHash(location.hash);
-    if (!room && !params.has('c')) {
+    if (!room && !params.has('c') && new URL(location.href).searchParams.get('mode')!=='local') {
       const last = localStorage.getItem(ROOM_STORAGE_KEY);
       if (last) room = validateRoom(JSON.parse(last));
     }
@@ -450,6 +452,10 @@ function installScrollScene() {
   }
   const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select,.letters-dock,.memory-atlas,.atlas-trigger');
   function advanceView(delta, scrollScale = 1) {
+    if(document.body.classList.contains('atlas-open')&&zoomTarget>=.999){
+      delta=globe3d?.zoomDetail(delta)??delta;
+      if(!delta)return;
+    }
     const now = performance.now(), elapsed = now - lastZoomInput;
     const next = explorationInput(zoomTarget, delta, elapsed > 220 ? 40 : elapsed);
     zoomTarget = next.zoom;
@@ -498,14 +504,16 @@ function installScrollScene() {
   new MutationObserver(requestPaint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   paint();
 }
+document.querySelector('.brand-mark').innerHTML=brandMark;
 const initialData=initialize();
+document.querySelector('.brand').href=journeyLink('./');
 boot.advance(.43);
 lettersUI = mountLetters({getContext:()=>({room,record:cloudRecord}),openSharing:()=>$('share-button').click(),notify:toast});
 addEventListener('journey-city-memory',event=>{const city=event.detail?.city;if(['南京','绍兴'].includes(city))lettersUI?.composeCity(city);});
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-const globeReady=import('./globe-3d.js?v=20261022-city-areas-final').then(async ({ mountGlobe }) => {
+const globeReady=import('./globe-3d.js?v=20261022-journey').then(async ({ mountGlobe }) => {
   boot.advance(.65);
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;

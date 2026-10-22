@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-city-areas';
-import { mountSurfaceProgress } from './globe-labels.js?v=20261022-city-areas';
-import { mountMemoryMap } from './memory-map.js?v=20261022-city-areas';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, detailZoomInput, detailMapFov, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-journey';
+import { mountSurfaceProgress } from './globe-labels.js?v=20261022-journey';
+import { mountMemoryMap } from './memory-map.js?v=20261022-journey';
 
 const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#344d3b', future: '#637853', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#243b37', land: '#74886a', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
@@ -226,7 +226,7 @@ export async function mountGlobe(container) {
   canvas.className = 'globe-canvas'; canvas.tabIndex = 0;
   canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', '可交互三维地球，拖动或方向键旋转，Home 键复位');
   const scene = new THREE.Scene(), world = new THREE.Group(); scene.add(world);
-  const camera = new THREE.PerspectiveCamera(35, 800 / 660, .1, 30);
+  const camera = new THREE.PerspectiveCamera(35, 800 / 660, .005, 30);
   camera.position.set(0, .08, 4.4); camera.lookAt(0, .02, 0);
   const ambient = new THREE.HemisphereLight('#f6f7ed', '#759478', 2); scene.add(ambient);
   const sun = new THREE.DirectionalLight('#fff5df', 2.3); sun.position.set(-3, 4, 5); scene.add(sun);
@@ -295,11 +295,17 @@ export async function mountGlobe(container) {
   let progress = 0, phase = 'pending', scroll = 0, targetYaw = homeYaw, targetPitch = homePitch, yaw = homeYaw, pitch = homePitch;
   let drag = null, touched = false, dragging = false, zoomChanging = false, cameraZoom = 0, frame = 0, lastFrame = 0, visible = !document.hidden;
   let resetting = null, idleMix = 0;
-  let selectedView = null, cameraDistance = 4.4;
+  let selectedView = null, cameraDistance = 4.4, cameraFov = 35, detailZoom = 0, atlasFocusGuard = false;
+  function zoomDetail(delta){
+    if(!selectedView)return delta;
+    const before=detailZoom,next=detailZoomInput(detailZoom,delta);detailZoom=next.zoom;
+    if(before!==detailZoom)invalidate();
+    return next.remaining;
+  }
   const raycaster = new THREE.Raycaster();
   const memories = mountMemoryMap(world,container,{
     onFocus(view) {
-      interruptReset(); selectedView = view; touched = true;
+      interruptReset(); selectedView = view; detailZoom = 0; atlasFocusGuard = true; touched = true;
       const center=vector(spherePoint(view.longitude,view.latitude)).applyAxisAngle(new THREE.Vector3(0,0,1),-.07);
       const turn = Math.PI * 2;
       targetYaw = yaw + ((-Math.atan2(center.x,center.z) - yaw + Math.PI) % turn + turn) % turn - Math.PI;
@@ -309,7 +315,9 @@ export async function mountGlobe(container) {
       invalidate();
     },
     onExit() { reset({preserveZoom:true}); },
-    onWrite(city) { window.dispatchEvent(new CustomEvent('journey-city-memory',{detail:{city}})); }
+    onWrite(city) { window.dispatchEvent(new CustomEvent('journey-city-memory',{detail:{city}})); },
+    onDetailZoom:zoomDetail,
+    onChange:()=>invalidate()
   });
   memories.ready.then(invalidate);
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -348,20 +356,23 @@ export async function mountGlobe(container) {
     plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, tangent, bank));
     shadow.position.copy(normal.clone().multiplyScalar(1.006)); shadow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
     trailGeometry.setDrawRange(0, Math.floor(progress * 512) * 36);
-    route.visible = phase !== 'pending' && scroll < .5;
+    route.visible = phase !== 'pending' && scroll < .5 && (!selectedView || cameraDistance>1.7);
     markers.forEach(marker => marker.dot.material.color.set(marker.progress <= progress ? palette.route : palette.future));
   }
   function draw(now) {
     frame = 0;
     if (!visible || canvas.dataset.contextLost === 'true') return;
     const themeMoving = updateTheme(now);
-    const desiredDistance = selectedView ? selectedView.distance + globeCameraDistance(cameraZoom) - globeCameraDistance(1) : globeCameraDistance(cameraZoom);
-    const distanceMoving = Math.abs(cameraDistance-desiredDistance) > .0001;
+    const desiredDistance = selectedView ? THREE.MathUtils.lerp(selectedView.distance,1.04,detailZoom) + globeCameraDistance(cameraZoom) - globeCameraDistance(1) : globeCameraDistance(cameraZoom);
+    const desiredFov=selectedView?detailMapFov(detailZoom):35;
+    const distanceMoving = Math.abs(cameraDistance-desiredDistance) > .0001 || Math.abs(cameraFov-desiredFov)>.001;
     const settled = !resetting && !distanceMoving && Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) < .0002;
     if (!dragging && !zoomChanging && settled && !themeMoving && !motion.matches && now - lastFrame < 32) { frame = requestAnimationFrame(draw); return; }
     const delta = Math.min((now - lastFrame) / 1000 || .016, .1); lastFrame = now;
     const follow = 1 - Math.exp(-delta * 12);
     cameraDistance = motion.matches ? desiredDistance : cameraDistance + (desiredDistance-cameraDistance)*follow;
+    cameraFov=motion.matches?desiredFov:cameraFov+(desiredFov-cameraFov)*follow;
+    camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(cameraFov/2))*1.85));camera.updateProjectionMatrix();
     camera.position.z = cameraDistance;
     camera.lookAt(0,0,0);
     if (resetting) {
@@ -375,7 +386,8 @@ export async function mountGlobe(container) {
     const idle = !touched && !motion.matches && scroll < .9;
     idleMix = motion.matches ? 0 : idleMix + ((idle ? 1 : 0) - idleMix) * follow;
     world.rotation.set(pitch + Math.sin(now / 19000) * .012 * idleMix, yaw + Math.sin(now / 23000) * .026 * idleMix, -.07);
-    memories.update({camera,zoom:cameraZoom,scroll,themeMix});
+    route.visible=phase!=='pending'&&scroll<.5&&(!selectedView||cameraDistance>1.7);
+    memories.update({camera,zoom:cameraZoom,scroll,themeMix,detail:detailZoom});
     markers.forEach(marker=>marker.dot.scale.setScalar(marker.progress===1
       ? THREE.MathUtils.lerp(1,.06,THREE.MathUtils.smoothstep(cameraZoom,.42,.78))
       : 1-cameraZoom*.55));
@@ -413,7 +425,7 @@ export async function mountGlobe(container) {
     if (Math.hypot(dx,dy) < 4 && !dragging) return;
     if (drag.touch && !dragging && (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.2)) return;
     touched = true; dragging = true; canvas.classList.add('is-dragging');
-    const scale = 4 / container.getBoundingClientRect().width;
+    const scale = 4 / container.getBoundingClientRect().width * (selectedView?Math.max(.04,Math.min(1,(cameraDistance-1)/1.15))*cameraFov/35:1);
     targetYaw = drag.yaw + dx * scale; targetPitch = Math.max(-.75, Math.min(.8, drag.pitch + (drag.touch ? 0 : dy * scale * .7)));
     container.dataset.rotated = 'true'; invalidate();
   });
@@ -434,7 +446,7 @@ export async function mountGlobe(container) {
   }
   function reset({ preserveZoom = false } = {}) {
     stopDrag();
-    selectedView=null; memories.clear();
+    selectedView=null; atlasFocusGuard=false; memories.clear();
     resetting = { yaw: world.rotation.y, pitch: world.rotation.x, started: performance.now() };
     // Preserve the last rendered pose, including its subtle idle motion.
     ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, 0));
@@ -465,16 +477,18 @@ export async function mountGlobe(container) {
   new ResizeObserver(resize).observe(container);
   theme(); positionPlane(); resize();
   return {
+    zoomDetail,
     update(value) { progress = clampProgress(value.progress / 100); phase = value.phase; positionPlane(); invalidate(); },
     pending() { phase = 'pending'; positionPlane(); invalidate(); },
     setZoom(value) { const next = clampProgress(value); zoomChanging ||= Math.abs(next - cameraZoom) > .00001; cameraZoom = next; invalidate(); },
     setScroll(value) {
       scroll = value; canvas.tabIndex = scroll < .5 ? 0 : -1;
-      if(scroll>.25 && selectedView){selectedView=null;memories.clear();}
+      if(scroll<.15)atlasFocusGuard=false;
+      if(scroll>.25 && selectedView&&!atlasFocusGuard){selectedView=null;memories.clear();}
       container.dataset.interactive = scroll < .5 ? 'true' : 'false';
       const opacity = Math.max(0, 1 - scroll * 2);
       futureMaterial.opacity = opacity * .8; trailMaterial.opacity = opacity;
-      route.visible = phase !== 'pending' && scroll < .5;
+      route.visible = phase !== 'pending' && scroll < .5 && (!selectedView || cameraDistance>1.7);
       plane.traverse(node => { if (node.isMesh) { node.material.transparent = true; node.material.opacity = opacity; } });
       shadow.material.opacity = opacity; markers.forEach(marker => { marker.dot.material.opacity = opacity; }); invalidate();
     },

@@ -12,6 +12,12 @@ export const VIEW_RESET_DURATION = 800;
 // Reveal borders and shared cities as the globe approaches, without changing scenes.
 export const globeCameraDistance = zoom => 4.4 - clampProgress(zoom) * 2.25;
 
+export function detailZoomInput(current,delta){
+  const zoom=clampProgress(current-delta/900);
+  return {zoom,remaining:delta>0&&zoom===0?Math.max(0,delta-current*900):0};
+}
+export const detailMapFov=zoom=>35/(1+clampProgress(zoom)*8);
+
 export function easeViewReset(progress) {
   const t = clampProgress(progress);
   return t * t * t * (t * (t * 6 - 15) + 10);

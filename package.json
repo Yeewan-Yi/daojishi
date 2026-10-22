@@ -3,5 +3,13 @@
   "version": "1.3.0",
   "private": true,
   "type": "module",
-  "scripts": {"start": "node scripts/serve.mjs", "test": "node --test", "check": "node --check app.js && node --check countdown.js && node --check cloud.js && node --check flight.js && node --check flip-clock.js"}
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test",
+    "check": "node --check app.js && node --check countdown.js && node --check cloud.js && node --check flight.js && node --check flip-clock.js",
+    "test:database": "node scripts/verify-journey-db.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11"
+  }
 }
