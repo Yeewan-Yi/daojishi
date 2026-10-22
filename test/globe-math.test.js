@@ -20,13 +20,21 @@ test('ground track hugs the globe while the plane retains a separate constant al
     const point = routePoint(i / 1000);
     close(Math.hypot(...point), ROUTE_RADIUS);
     close(Math.hypot(...routePoint(i / 1000, AIRCRAFT_RADIUS)), AIRCRAFT_RADIUS);
-    assert.ok(point[2] > 0);
+    assert.ok(point[1] > 0);
   }
-  close(routePoint(0)[0], -routePoint(1)[0]);
-  close(routePoint(.5)[0], 0);
+  spherePoint(-122.3321, 47.6062, ROUTE_RADIUS).forEach((value,i)=>close(routePoint(0)[i],value));
+  spherePoint(118.7778, 32.0617, ROUTE_RADIUS).forEach((value,i)=>close(routePoint(1)[i],value));
+  assert.ok(routePoint(.5)[2] < -.4, 'the route must cross the Pacific rather than Europe');
   assert.ok(routePoint(.5)[1] > routePoint(0)[1]);
   assert.ok(ROUTE_RADIUS > 1 && ROUTE_RADIUS < 1.02);
   assert.ok(AIRCRAFT_RADIUS > ROUTE_RADIUS);
+});
+
+test('equal time intervals cover equal surface distances across the international date line', () => {
+  const angle = (a,b) => Math.acos(Math.max(-1,Math.min(1,a.reduce((sum,v,i)=>sum+v*b[i],0))));
+  const length = angle(routePoint(0,1),routePoint(1,1));
+  for(let i=0;i<100;i++) close(angle(routePoint(i/100,1),routePoint((i+1)/100,1)),length/100,1e-10);
+  close(angle(routePoint(0,1),routePoint(.5,1)),length/2);
 });
 
 test('reverse scrolling increases zoom and forward scrolling restores it within limits', () => {

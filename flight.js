@@ -43,7 +43,7 @@ export function flightMarkup(prefix = 'journey') {
       </g>
     </g>
     <g class="flight-position-label" data-flight="position-label" transform="translate(115 328)"><rect x="-46" y="-13" width="92" height="26" rx="13"/><text data-flight="position-text" text-anchor="middle" dominant-baseline="central">等待启程</text></g>
-    <g class="airport-labels"><text x="115" y="409" text-anchor="middle">启程</text><text class="airport-date" data-flight="start-date" x="115" y="430" text-anchor="middle">START</text><text x="685" y="409" text-anchor="middle">抵达</text><text class="airport-date" data-flight="end-date" x="685" y="430" text-anchor="middle">DESTINATION</text></g>
+    <g class="airport-labels"><text x="115" y="409" text-anchor="middle">西雅图</text><text class="airport-date" data-flight="start-date" x="115" y="430" text-anchor="middle">START</text><text x="685" y="409" text-anchor="middle">南京</text><text class="airport-date" data-flight="end-date" x="685" y="430" text-anchor="middle">DESTINATION</text></g>
   </svg>`;
 }
 

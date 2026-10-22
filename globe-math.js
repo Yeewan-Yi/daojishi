@@ -27,10 +27,21 @@ export function percentageParts(progress) {
   return { text, major: text.slice(0, -5), minor: text.slice(-5) };
 }
 
-// Keep the ground track close to the surface, independently of aircraft altitude.
+// City-center coordinates; the journey crosses the North Pacific on a great circle.
+// GeoNames Seattle and Nanjing (1799962), rounded for a city-scale illustration.
+export const JOURNEY_CITIES = Object.freeze([
+  Object.freeze({ name: '西雅图', longitude: -122.3321, latitude: 47.6062 }),
+  Object.freeze({ name: '南京', longitude: 118.7778, latitude: 32.0617 })
+]);
+const departure = spherePoint(JOURNEY_CITIES[0].longitude, JOURNEY_CITIES[0].latitude);
+const destination = spherePoint(JOURNEY_CITIES[1].longitude, JOURNEY_CITIES[1].latitude);
+const routeAngle = Math.acos(Math.max(-1, Math.min(1, departure.reduce((sum, v, i) => sum + v * destination[i], 0))));
+const routeDirection = destination.map((v, i) => (v - departure[i] * Math.cos(routeAngle)) / Math.sin(routeAngle));
+
+// Constant angular speed maps elapsed time to the same fraction of surface distance.
 export function routePoint(progress, radius = ROUTE_RADIUS) {
-  const angle = clampProgress(progress) * Math.PI;
-  return [-.95 * Math.cos(angle) * radius, .95 * Math.sin(angle) * radius, Math.sqrt(1 - .95 ** 2) * radius];
+  const angle = clampProgress(progress) * routeAngle;
+  return departure.map((v, i) => (v * Math.cos(angle) + routeDirection[i] * Math.sin(angle)) * radius);
 }
 
 export function advanceZoom(current, wheelDelta) {
@@ -86,6 +97,6 @@ export function resetPose(fromYaw, fromPitch, homeYaw, homePitch, progress) {
 }
 
 export function routeTangent(progress) {
-  const angle = clampProgress(progress) * Math.PI;
-  return [Math.sin(angle), Math.cos(angle), 0];
+  const angle = clampProgress(progress) * routeAngle;
+  return departure.map((v, i) => -v * Math.sin(angle) + routeDirection[i] * Math.cos(angle));
 }

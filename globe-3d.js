@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-bounded-rotation';
-import { mountSurfaceProgress } from './globe-labels.js?v=20261021-clear';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-seattle-nanjing';
+import { mountSurfaceProgress } from './globe-labels.js?v=20261022-seattle-nanjing';
 
 const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#243b37', land: '#74886a', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
@@ -9,7 +9,7 @@ const vector = values => new THREE.Vector3(...values);
 function canvasTexture(canvas, color = false) {
   const texture = new THREE.CanvasTexture(canvas);
   if (color) texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping; texture.offset.x = .3;
+  texture.wrapS = THREE.RepeatWrapping; texture.offset.x = .25;
   texture.anisotropy = 8;
   return texture;
 }
@@ -283,7 +283,7 @@ export async function mountGlobe(container) {
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(.075, 32), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCanvas), transparent: true, depthWrite: false }));
   route.add(shadow);
 
-  const homeYaw = .32, homePitch = .12;
+  const homeYaw = Math.PI, homePitch = .7;
   const dayColors = {}, nightColors = {}, palette = {};
   for (const key of Object.keys(lightPalette)) {
     dayColors[key] = new THREE.Color(lightPalette[key]); nightColors[key] = new THREE.Color(darkPalette[key]);
@@ -323,7 +323,7 @@ export async function mountGlobe(container) {
   }
   function positionPlane() {
     const normal = vector(routePoint(progress, 1)).normalize(), tangent = vector(routeTangent(progress));
-    const bank = normal.clone().multiplyScalar(.68).add(new THREE.Vector3(0, 0, .32)).normalize();
+    const bank = normal;
     const side = new THREE.Vector3().crossVectors(tangent, bank).normalize();
     plane.position.copy(vector(routePoint(progress, AIRCRAFT_RADIUS)));
     plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, tangent, bank));
