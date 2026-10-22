@@ -1,8 +1,8 @@
 import * as THREE from './vendor/three.module.js';
-import {spherePoint} from './globe-math.js?v=20261022-light-frontiers';
+import {spherePoint} from './globe-math.js?v=20261022-city-areas';
 
 export const VISITED_CITIES = Object.freeze([
-  Object.freeze({name:'南京',country:'CHN',longitude:118.7778,latitude:32.0617,offset:[-62,-30]}),
+  Object.freeze({name:'南京',country:'CHN',longitude:118.7778,latitude:32.0617,offset:[-100,-38]}),
   Object.freeze({name:'绍兴',country:'CHN',longitude:120.57,latitude:30,offset:[18,15]})
 ]);
 export const polygonsOf = feature => feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
@@ -46,6 +46,29 @@ export function countryView(feature) {
   const extent=angles[Math.floor((angles.length-1)*.94)]||.15;
   return {longitude,latitude,distance:Math.max(1.38,Math.min(3,1+Math.sin(extent)/Math.tan(THREE.MathUtils.degToRad(15))))};
 }
+// Tessellate before projecting so triangle interiors follow the curved surface too.
+export function citySurfaceGeometry(feature) {
+  const positions=[];
+  function triangle(a,b,c){
+    if(Math.max(a.distanceTo(b),b.distanceTo(c),c.distanceTo(a))>.012){
+      const ab=a.clone().add(b).normalize(),bc=b.clone().add(c).normalize(),ca=c.clone().add(a).normalize();
+      triangle(a,ab,ca);triangle(ab,b,bc);triangle(ca,bc,c);triangle(ab,bc,ca);return;
+    }
+    positions.push(...a.clone().multiplyScalar(1.011).toArray(),...b.clone().multiplyScalar(1.011).toArray(),...c.clone().multiplyScalar(1.011).toArray());
+  }
+  for(const polygon of polygonsOf(feature)){
+    const rings=polygon.map(ring=>ring.slice(0,-1).map(([x,y])=>new THREE.Vector2(x,y)));
+    const points=rings.flat();
+    for(const face of THREE.ShapeUtils.triangulateShape(rings[0],rings.slice(1))){
+      triangle(...face.map(i=>new THREE.Vector3(...spherePoint(points[i].x,points[i].y))));
+    }
+  }
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.computeVertexNormals();return geometry;
+}
+function cityOutlineGeometry(feature){
+  const edges=polygonsOf(feature).flatMap(polygon=>polygon.flatMap(ring=>ring.slice(1).map((b,i)=>({a:ring[i],b}))));
+  return borderGeometry(edges).scale(1.012/1.006,1.012/1.006,1.012/1.006);
+}
 function borderGeometry(edges) {
   const positions=[];
   for(const edge of edges) {
@@ -62,7 +85,7 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite}) {
   const material=new THREE.LineBasicMaterial({color:'#6c7a59',transparent:true,opacity:0,depthWrite:false});
   const selectedMaterial=new THREE.LineBasicMaterial({color:'#bc9d60',transparent:true,opacity:0,depthWrite:false});
   const selectedLine=new THREE.LineSegments(new THREE.BufferGeometry(),selectedMaterial);group.add(selectedLine);
-  let features=[],edges=[],selected=null,activeCity=null,open=false,currentZoom=0,currentScroll=0;
+  let features=[],cityFeatures=[],edges=[],selected=null,activeCity=null,open=false,currentZoom=0,currentScroll=0;
   const trigger=document.createElement('button');trigger.className='atlas-trigger';trigger.type='button';trigger.innerHTML=icon+'<span>履痕</span><span class="atlas-count">2</span>';trigger.setAttribute('aria-expanded','false');trigger.setAttribute('aria-controls','memory-atlas');document.body.append(trigger);
   const panel=document.createElement('aside');panel.id='memory-atlas';panel.className='memory-atlas';panel.inert=true;panel.setAttribute('aria-label','两个人的回忆地图');
   panel.innerHTML='<div class="atlas-heading"><span>履痕</span><button type="button" class="atlas-close" aria-label="关闭回忆地图">×</button></div><label class="atlas-country-picker"><span class="atlas-country-label">一起走过</span><select aria-label="选择国家"></select></label><p class="atlas-summary"></p><div class="atlas-cities"></div><div class="atlas-city-detail" hidden><span class="atlas-detail-caption">留给我们</span><h3></h3><button type="button" class="atlas-write">写下这座城市的回忆 <span aria-hidden="true">↗</span></button></div>';
@@ -86,25 +109,28 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite}) {
   picker.addEventListener('change',()=>selectCountry(features.find(f=>f.properties.id===picker.value)));
   panel.querySelector('.atlas-write').addEventListener('click',()=>{if(!activeCity)return;const city=activeCity.name;setOpen(false);onWrite(city);});
   addEventListener('keydown',event=>{if(event.key==='Escape'&&open){event.stopImmediatePropagation();event.preventDefault();close();trigger.focus({preventScroll:true});}},true);
-  const glowCanvas=document.createElement('canvas');glowCanvas.width=glowCanvas.height=64;const ctx=glowCanvas.getContext('2d');const gradient=ctx.createRadialGradient(32,32,0,32,32,32);gradient.addColorStop(0,'#f8dfaa');gradient.addColorStop(.22,'#e8be79b0');gradient.addColorStop(1,'#e8be7900');ctx.fillStyle=gradient;ctx.fillRect(0,0,64,64);
-  const glowTexture=new THREE.CanvasTexture(glowCanvas);
   const pins=VISITED_CITIES.map(city=>{
     const normal=new THREE.Vector3(...spherePoint(city.longitude,city.latitude));
-    const dot=new THREE.Mesh(new THREE.SphereGeometry(.005,12,8),new THREE.MeshBasicMaterial({color:'#f7d39a',transparent:true}));dot.position.copy(normal).multiplyScalar(1.012);group.add(dot);
-    const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTexture,transparent:true,depthWrite:false}));glow.position.copy(normal).multiplyScalar(1.018);glow.scale.set(.055,.055,1);group.add(glow);
+    const fill=new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshBasicMaterial({color:'#b98b42',transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));group.add(fill);
+    const outline=new THREE.LineSegments(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:'#94703d',transparent:true,opacity:0,depthWrite:false}));group.add(outline);
+    const anchor=new THREE.Object3D();anchor.position.copy(normal).multiplyScalar(1.014);group.add(anchor);
     const label=document.createElement('button');label.type='button';label.className='memory-city-pin';label.textContent=city.name;label.setAttribute('aria-label',`${city.name}，我们共同去过`);label.style.setProperty('--pin-x',`${city.offset[0]}px`);label.style.setProperty('--pin-y',`${city.offset[1]}px`);container.append(label);
     label.addEventListener('pointerdown',event=>event.stopPropagation());label.addEventListener('click',()=>selectCountry(features.find(f=>f.properties.id===city.country),city));
-    return {city,normal,dot,glow,label};
+    return {city,normal,fill,outline,anchor,label};
   });
-  const ready=fetch(new URL('./countries.geojson?v=20261022-light-frontiers',import.meta.url)).then(response=>{if(!response.ok)throw Error('Country map unavailable');return response.json();}).then(data=>{
+  const citiesReady=fetch(new URL('./visited-cities.geojson?v=20261022-city-areas',import.meta.url)).then(response=>{if(!response.ok)throw Error('City map unavailable');return response.json();}).then(data=>{
+    cityFeatures=data.features;
+    for(const pin of pins){const feature=cityFeatures.find(f=>f.properties.name===pin.city.name);if(!feature)continue;pin.fill.geometry.dispose();pin.fill.geometry=citySurfaceGeometry(feature);pin.outline.geometry.dispose();pin.outline.geometry=cityOutlineGeometry(feature);}
+  }).catch(()=>{cityFeatures=[];console.warn('City area map could not be loaded.');});
+  const countriesReady=fetch(new URL('./countries.geojson?v=20261022-city-areas',import.meta.url)).then(response=>{if(!response.ok)throw Error('Country map unavailable');return response.json();}).then(data=>{
     features=data.features;edges=sharedCountryEdges(features);group.add(new THREE.LineSegments(borderGeometry(edges),material));
     for(const feature of [...features].sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'zh'))){const option=document.createElement('option');option.value=feature.properties.id;option.textContent=feature.properties.name;picker.append(option);}
     trigger.disabled=false;
   }).catch(()=>{trigger.disabled=true;trigger.title='国界地图暂未载入，刷新后重试';});
   trigger.disabled=true;
   return {
-    ready,
-    pick(longitude,latitude){if(!canPickCountry(currentZoom,currentScroll))return false;const country=countryAt(features,longitude,latitude);if(country)selectCountry(country);return !!country;},
+    ready:Promise.all([countriesReady,citiesReady]),
+    pick(longitude,latitude){if(!canPickCountry(currentZoom,currentScroll))return false;const area=countryAt(cityFeatures,longitude,latitude);const city=area&&VISITED_CITIES.find(c=>c.name===area.properties.name);const country=city?features.find(f=>f.properties.id===city.country):countryAt(features,longitude,latitude);if(country)selectCountry(country,city||null);return !!country;},
     clear(){selected=null;activeCity=null;setOpen(false);},
     update({camera,zoom,scroll,themeMix}){
       currentZoom=zoom;currentScroll=scroll;
@@ -115,9 +141,12 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite}) {
       const lights=THREE.MathUtils.smoothstep(zoom,.42,.78)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));
       world.updateMatrixWorld(true);camera.updateMatrixWorld();
       for(const pin of pins){
-        pin.dot.material.color.set('#a97635').lerp(new THREE.Color('#f7d39a'),themeMix);
-        pin.dot.material.opacity=lights;pin.glow.material.opacity=lights*.8;pin.dot.visible=pin.glow.visible=lights>.01;
-        const p=pin.dot.getWorldPosition(new THREE.Vector3());const facing=p.clone().normalize().dot(camera.position.clone().sub(p).normalize());p.project(camera);
+        const emphasis=activeCity?.name===pin.city.name?1:0;
+        pin.fill.material.color.set('#b68a43').lerp(new THREE.Color('#e3be77'),themeMix);
+        pin.fill.material.opacity=lights*THREE.MathUtils.lerp(.48+emphasis*.17,.55+emphasis*.17,themeMix);
+        pin.outline.material.color.set('#82643a').lerp(new THREE.Color('#f3d69b'),themeMix);pin.outline.material.opacity=lights*(.72+emphasis*.2);
+        pin.fill.visible=pin.outline.visible=lights>.01;
+        const p=pin.anchor.getWorldPosition(new THREE.Vector3());const facing=p.clone().normalize().dot(camera.position.clone().sub(p).normalize());p.project(camera);
         const visible=lights>.2&&facing>.15&&Math.abs(p.x)<.95&&Math.abs(p.y)<.8;
         pin.label.style.opacity=visible?String(lights):'0';pin.label.style.pointerEvents=visible?'auto':'none';pin.label.tabIndex=visible?0:-1;
         const viewport=container.querySelector('canvas.globe-canvas');

@@ -6,3 +6,5 @@
 - 方正宋刻本秀楷简体 / FZSongKeBenXiuKaiS-R-GB — supplied by the project owner. `vendor/FZSongKeBenXiuKaiS.woff2` is a WOFF2 conversion preserving the original font's glyph coverage and metadata. This font is not covered by the open-source licenses above. Typeface information: https://www.foundertype.com/index.php/FontInfo/index/id/6139.html .
 
 All production rendering resources are served from this site's own origin. No third-party script or map service is contacted by the 3D scene at runtime.
+
+- City administrative areas in `visited-cities.geojson` — Alibaba Cloud DataV GeoAtlas, Nanjing (320100) and Shaoxing (330600), retrieved 2026-10-22. Sources: https://geo.datav.aliyun.com/areas_v3/bound/320100.json and https://geo.datav.aliyun.com/areas_v3/bound/330600.json . Used for illustrative shared-travel area highlights, not surveying or navigation. The local copy retains complete city polygons and omits unused metadata. GeoAtlas: https://datav.aliyun.com/portal/school/atlas/area_selector .

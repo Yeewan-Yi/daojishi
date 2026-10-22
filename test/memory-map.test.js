@@ -1,8 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {countryAt,countryView,VISITED_CITIES,canPickCountry,sharedCountryEdges} from '../memory-map.js';
+import {countryAt,countryView,VISITED_CITIES,canPickCountry,sharedCountryEdges,citySurfaceGeometry} from '../memory-map.js';
 const countries=JSON.parse(readFileSync(new URL('../countries.geojson',import.meta.url))).features;
+const cities=JSON.parse(readFileSync(new URL('../visited-cities.geojson',import.meta.url))).features;
+
+test('visited city areas cover their city centers and form finite curved surface triangles',()=>{
+  for(const city of VISITED_CITIES){
+    const feature=countryAt(cities,city.longitude,city.latitude);
+    assert.equal(feature?.properties.name,city.name);
+    const geometry=citySurfaceGeometry(feature),positions=geometry.getAttribute('position');
+    assert.ok(positions.count>300);assert.equal(positions.count%3,0);
+    for(let i=0;i<positions.count;i++){
+      const radius=Math.hypot(positions.getX(i),positions.getY(i),positions.getZ(i));
+      assert.ok(Math.abs(radius-1.011)<.000001,'city area follows the globe above its surface');
+    }
+    geometry.dispose();
+  }
+  assert.equal(countryAt(cities,121.4737,31.2304),null,'nearby Shanghai is not highlighted as visited');
+});
+
+test('city surface triangulation preserves holes instead of filling unvisited enclaves',()=>{
+  const feature={geometry:{type:'Polygon',coordinates:[[[0,0],[1,0],[1,1],[0,1],[0,0]],[[.2,.2],[.2,.8],[.8,.8],[.8,.2],[.2,.2]]]}};
+  const geometry=citySurfaceGeometry(feature),p=geometry.getAttribute('position');
+  for(let i=0;i<p.count;i+=3){
+    const x=(p.getX(i)+p.getX(i+1)+p.getX(i+2))/3,y=(p.getY(i)+p.getY(i+1)+p.getY(i+2))/3,z=(p.getZ(i)+p.getZ(i+1)+p.getZ(i+2))/3;
+    const lon=Math.atan2(x,z)*180/Math.PI,lat=Math.atan2(y,Math.hypot(x,z))*180/Math.PI;
+    assert.ok(!(lon>.201&&lon<.799&&lat>.201&&lat<.799),'hole remains empty');
+  }
+  geometry.dispose();
+});
 test('country clicks are gated until the close zoom level, including after page scrolling',()=>{
   for(const zoom of [0,.25,.65,.8,.859])assert.equal(canPickCountry(zoom),false);
   assert.equal(canPickCountry(.86),true);assert.equal(canPickCountry(1),true);
