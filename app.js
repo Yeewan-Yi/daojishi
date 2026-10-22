@@ -1,4 +1,5 @@
 import {brandMark} from './symbols.js?v=20261022-journey';
+import {mountReleaseNotes} from './release-notes.js?v=20261022-notes';
 import {journeyLink} from './journey-data.js?v=20261022-journey';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
@@ -14,6 +15,7 @@ const boot=startBoot();boot.advance(.22);
 const $ = id => document.getElementById(id);
 const datePicker=mountDatePicker();
 bindModalMotion();
+mountReleaseNotes();
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
 const dateFormat = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 const timeFormat = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });

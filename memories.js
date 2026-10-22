@@ -1,7 +1,9 @@
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261022-journey';
 import {brandMark,trailMark} from './symbols.js?v=20261022-journey';
 import {openModal,closeModal,bindModalMotion} from './motion.js';
+import {mountReleaseNotes} from './release-notes.js?v=20261022-notes';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
+mountReleaseNotes();
 $('brand-emblem').innerHTML=brandMark;$('trail-emblem').innerHTML=trailMark;
 for(const id of ['home-brand','home-link','map-link'])$(id).href=journeyLink('./',null,ctx);
 let theme;try{theme=localStorage.getItem('youqi.theme');}catch{}theme||=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';

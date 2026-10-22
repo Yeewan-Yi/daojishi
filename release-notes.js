@@ -1,0 +1,43 @@
+import {openModal,closeModal} from './motion.js';
+
+// Keep this list limited to changes included in the deployed site.
+export const releases=[
+  {version:'2026.10.22.3',date:'2026-10-22',title:'把走过的路，收入拾光',items:[
+    '履痕支持手动点亮城市，按真实行政区域高亮；选中国家或城市后，可以继续放大查看省州与城市边界。',
+    '新增淡蓝色的「拾光」，按城市收入照片与短视频，两个人可以查看历史，在每份影像旁留下评论。',
+    '有期、履痕与拾光更新了线描标记；导航新增版本手记，可以随时回看最近的变化。']},
+  {version:'2026.10.22.2',date:'2026-10-22',title:'让航程与足迹更清晰',items:[
+    '飞机沿更长的航线，从西雅图飞往南京，机身、机翼与发动机细节得到细化。',
+    '优化浅色模式的航线与国界；南京、绍兴高亮为完整城市区域，避免抵达标记遮挡。',
+    '地球恢复有限制的旋转，保留在原界面中上滑放大的操作。']},
+  {version:'2026.10.21.1',date:'2026-10-21',title:'信笺，写得更从容',items:[
+    '传书采用覆盖式侧栏，输入文字或使用输入法时保持展开，避免打断书写；递函前可添加图片与表情。',
+    '导航文字在图标右侧缓缓展开；书写时毛笔有动态效果，窗口打开与收起增加过渡。',
+    '刷新等待时呈现飞机加载动画；日期选择支持滚轮切换月份与年份，航程百分比显示七位小数。']}
+];
+export function mountReleaseNotes(){
+  const host=document.querySelector('.header-actions')||document.querySelector('.memory-header nav');
+  if(!host||document.getElementById('version-button'))return;
+  const main=host.classList.contains('header-actions'),button=document.createElement('button');
+  button.id='version-button';button.type='button';button.className=main?'icon-button nav-tool':'line-action';
+  button.setAttribute('aria-label','版本手记');button.setAttribute('aria-haspopup','dialog');button.setAttribute('aria-controls','release-dialog');
+  button.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 5h16v23H8ZM5 8h3m-3 6h3m-3 6h3M12 10h8M12 15h5M12 20h4"/><path d="m23 2 3 3-3 3-3-3ZM20 23l2 2 4-5"/></svg><span class="nav-caption" aria-hidden="true">版本</span>';
+  host.append(button);
+  const dialog=document.createElement('dialog');dialog.id='release-dialog';dialog.className='release-dialog';dialog.setAttribute('aria-labelledby','release-title');
+  dialog.innerHTML='<div class="release-heading"><div><span class="release-eyebrow">有期 · 更新记录</span><h2 id="release-title">版本手记</h2></div><button type="button" class="release-close" aria-label="关闭版本手记" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><p class="release-intro">这里，记下有期最近的变化。</p><ol class="release-list"></ol>';
+  const list=dialog.querySelector('ol');
+  for(const [index,release] of releases.entries()){
+    const li=document.createElement('li'),meta=document.createElement('div');meta.className='release-meta';
+    const time=document.createElement('time');time.dateTime=release.date;time.textContent=release.date.replaceAll('-',' / ');
+    const version=document.createElement('span');version.textContent='v'+release.version;meta.append(time,version);
+    if(index===0){const current=document.createElement('em');current.textContent='当前';meta.append(current);}
+    const title=document.createElement('h3');title.textContent=release.title;const items=document.createElement('ul');
+    for(const text of release.items){const item=document.createElement('li');item.textContent=text;items.append(item);}
+    li.append(meta,title,items);list.append(li);
+  }
+  document.body.append(dialog);
+  button.onclick=()=>openModal(dialog);
+  dialog.querySelector('.release-close').onclick=()=>closeModal(dialog);
+  dialog.addEventListener('cancel',event=>{event.preventDefault();closeModal(dialog);});
+  dialog.addEventListener('click',event=>{const rect=dialog.getBoundingClientRect();if(event.target===dialog&&(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom))closeModal(dialog);});
+}
