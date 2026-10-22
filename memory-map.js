@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import {spherePoint} from './globe-math.js?v=20261022-soft-frontiers';
+import {spherePoint} from './globe-math.js?v=20261022-light-frontiers';
 
 export const VISITED_CITIES = Object.freeze([
   Object.freeze({name:'南京',country:'CHN',longitude:118.7778,latitude:32.0617,offset:[-62,-30]}),
@@ -96,7 +96,7 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite}) {
     label.addEventListener('pointerdown',event=>event.stopPropagation());label.addEventListener('click',()=>selectCountry(features.find(f=>f.properties.id===city.country),city));
     return {city,normal,dot,glow,label};
   });
-  const ready=fetch(new URL('./countries.geojson?v=20261022-soft-frontiers',import.meta.url)).then(response=>{if(!response.ok)throw Error('Country map unavailable');return response.json();}).then(data=>{
+  const ready=fetch(new URL('./countries.geojson?v=20261022-light-frontiers',import.meta.url)).then(response=>{if(!response.ok)throw Error('Country map unavailable');return response.json();}).then(data=>{
     features=data.features;edges=sharedCountryEdges(features);group.add(new THREE.LineSegments(borderGeometry(edges),material));
     for(const feature of [...features].sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'zh'))){const option=document.createElement('option');option.value=feature.properties.id;option.textContent=feature.properties.name;picker.append(option);}
     trigger.disabled=false;
@@ -109,8 +109,8 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite}) {
     update({camera,zoom,scroll,themeMix}){
       currentZoom=zoom;currentScroll=scroll;
       const reveal=THREE.MathUtils.smoothstep(zoom,.65,.96)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));
-      material.color.set('#5f725e').lerp(new THREE.Color('#8d9a80'),themeMix);material.opacity=reveal*(.18+themeMix*.06);
-      selectedMaterial.color.set('#6d765d').lerp(new THREE.Color('#b39c71'),themeMix);selectedMaterial.opacity=selected?reveal*(.3+themeMix*.08):0;
+      material.color.set('#465e4b').lerp(new THREE.Color('#8d9a80'),themeMix);material.opacity=reveal*THREE.MathUtils.lerp(.44,.24,themeMix);
+      selectedMaterial.color.set('#56664b').lerp(new THREE.Color('#b39c71'),themeMix);selectedMaterial.opacity=selected?reveal*THREE.MathUtils.lerp(.58,.38,themeMix):0;
       trigger.classList.toggle('is-visible',scroll<.2);panel.classList.toggle('is-away',scroll>.25);
       const lights=THREE.MathUtils.smoothstep(zoom,.42,.78)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));
       world.updateMatrixWorld(true);camera.updateMatrixWorld();
