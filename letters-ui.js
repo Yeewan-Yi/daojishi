@@ -235,5 +235,13 @@ export function mountLetters({getContext,openSharing,notify,client=new LettersCl
   addEventListener('online',sync);
   addEventListener('storage',event=>{if(event.key?.startsWith('youqi.letters.')){seen=get(key('seen'),seen);unread();}});
   panel.inert=true;counter();sync();
-  return {refresh:sync,close:()=>setOpen(false)};
+  return {refresh:sync,close:()=>setOpen(false),composeCity(city){
+    setOpen(true);
+    if(view!=='book'){notify('连接双人传书后，即可记录共同回忆');return;}
+    if(busy||composing||imeSettling){notify('请先完成当前的书写或递函');return;}
+    if(edit){notify('请先完成正在编辑的来函');input.focus({preventScroll:true});return;}
+    const tag=`【${city} · 共同回忆】`;
+    if(!input.value.includes(tag))input.value+=(input.value.trim()?'\n\n':'')+tag+'\n';
+    setEditing(true);saveDraft();counter();input.focus({preventScroll:true});
+  }};
 }

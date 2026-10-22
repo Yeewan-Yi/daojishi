@@ -73,3 +73,5 @@ main.scroll-story{overflow-anchor:none}
 .beacon-minor,.beacon-sign{font-size:.72em}.beacon-sign{margin-left:2px}.flight-progress-beacon[data-occluded=true]>svg{opacity:.6}
 .globe-city-label{position:absolute;z-index:3;pointer-events:none;font:13px "Youqi Han",KaiTi,serif;letter-spacing:2px;white-space:nowrap;transform:translate(-50%,14px);text-shadow:0 1px 5px var(--bg),0 0 10px var(--bg);opacity:0;transition:opacity .2s ease}
 @media(max-width:520px){.flight-progress-beacon{width:152px;height:36px;gap:5px}.beacon-number{font-size:14px}.flight-progress-beacon>svg{width:17px;height:17px}}
+
+.globe-canvas{position:absolute;max-width:none;mask-image:linear-gradient(to bottom,transparent,#000 12%,#000 62%,transparent 92%),linear-gradient(to right,transparent,#000 9%,#000 91%,transparent);mask-composite:intersect}

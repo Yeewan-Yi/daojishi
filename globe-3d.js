@@ -1,8 +1,9 @@
 import * as THREE from './vendor/three.module.js';
-import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-long-journey';
-import { mountSurfaceProgress } from './globe-labels.js?v=20261022-long-journey';
+import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-memory-atlas';
+import { mountSurfaceProgress } from './globe-labels.js?v=20261022-memory-atlas';
+import { mountMemoryMap } from './memory-map.js?v=20261022-memory-atlas';
 
-const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#506f50', future: '#92a68b', halo: '#b8d0b2' };
+const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#344d3b', future: '#637853', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#243b37', land: '#74886a', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
 const vector = values => new THREE.Vector3(...values);
 
@@ -260,12 +261,13 @@ export async function mountGlobe(container) {
   world.add(new THREE.Mesh(new THREE.SphereGeometry(1.022,96,64),atmosphere));
 
   const route = new THREE.Group(); world.add(route);
-  const futureVertices = [];
-  for (let i = 0; i < 200; i += 2) futureVertices.push(...routePoint(i / 200), ...routePoint((i + .85) / 200));
-  const futureGeometry = new THREE.BufferGeometry(); futureGeometry.setAttribute('position', new THREE.Float32BufferAttribute(futureVertices, 3));
-  const futureMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: .8 });
-  route.add(new THREE.LineSegments(futureGeometry, futureMaterial));
   class FlightCurve extends THREE.Curve { getPoint(t, target = new THREE.Vector3()) { return target.set(...routePoint(t)); } }
+  const futureGeometry = new THREE.TubeGeometry(new FlightCurve(),512,.0028,5,false);
+  const dashIndices=[];
+  for(let segment=0;segment<512;segment++)if(Math.floor(segment/4)%2===0)for(let i=segment*30;i<(segment+1)*30;i++)dashIndices.push(futureGeometry.index.array[i]);
+  futureGeometry.setIndex(dashIndices);
+  const futureMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: .8 });
+  route.add(new THREE.Mesh(futureGeometry, futureMaterial));
   const trailGeometry = new THREE.TubeGeometry(new FlightCurve(), 512, .005, 6, false);
   trailGeometry.setDrawRange(0, 0);
   const trailMaterial = new THREE.MeshBasicMaterial({ transparent: true }); route.add(new THREE.Mesh(trailGeometry, trailMaterial));
@@ -293,6 +295,23 @@ export async function mountGlobe(container) {
   let progress = 0, phase = 'pending', scroll = 0, targetYaw = homeYaw, targetPitch = homePitch, yaw = homeYaw, pitch = homePitch;
   let drag = null, touched = false, dragging = false, zoomChanging = false, cameraZoom = 0, frame = 0, lastFrame = 0, visible = !document.hidden;
   let resetting = null, idleMix = 0;
+  let selectedView = null, cameraDistance = 4.4;
+  const raycaster = new THREE.Raycaster();
+  const memories = mountMemoryMap(world,container,{
+    onFocus(view) {
+      interruptReset(); selectedView = view; touched = true;
+      const center=vector(spherePoint(view.longitude,view.latitude)).applyAxisAngle(new THREE.Vector3(0,0,1),-.07);
+      const turn = Math.PI * 2;
+      targetYaw = yaw + ((-Math.atan2(center.x,center.z) - yaw + Math.PI) % turn + turn) % turn - Math.PI;
+      targetPitch = Math.max(-1.4,Math.min(1.4,Math.asin(center.y)-Math.atan2(camera.position.y,view.distance)));
+      container.dataset.rotated='true';
+      window.dispatchEvent(new CustomEvent('journey-country-focus'));
+      invalidate();
+    },
+    onExit() { reset({preserveZoom:true}); },
+    onWrite(city) { window.dispatchEvent(new CustomEvent('journey-city-memory',{detail:{city}})); }
+  });
+  memories.ready.then(invalidate);
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   function theme() {
     themeFrom = themeMix;
@@ -336,10 +355,15 @@ export async function mountGlobe(container) {
     frame = 0;
     if (!visible || canvas.dataset.contextLost === 'true') return;
     const themeMoving = updateTheme(now);
-    const settled = !resetting && Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) < .0002;
+    const desiredDistance = selectedView ? selectedView.distance + globeCameraDistance(cameraZoom) - globeCameraDistance(1) : globeCameraDistance(cameraZoom);
+    const distanceMoving = Math.abs(cameraDistance-desiredDistance) > .0001;
+    const settled = !resetting && !distanceMoving && Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) < .0002;
     if (!dragging && !zoomChanging && settled && !themeMoving && !motion.matches && now - lastFrame < 32) { frame = requestAnimationFrame(draw); return; }
     const delta = Math.min((now - lastFrame) / 1000 || .016, .1); lastFrame = now;
     const follow = 1 - Math.exp(-delta * 12);
+    cameraDistance = motion.matches ? desiredDistance : cameraDistance + (desiredDistance-cameraDistance)*follow;
+    camera.position.z = cameraDistance;
+    camera.lookAt(0,0,0);
     if (resetting) {
       const t = motion.matches ? 1 : Math.min(1, (now - resetting.started) / VIEW_RESET_DURATION);
       ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, t));
@@ -351,10 +375,12 @@ export async function mountGlobe(container) {
     const idle = !touched && !motion.matches && scroll < .9;
     idleMix = motion.matches ? 0 : idleMix + ((idle ? 1 : 0) - idleMix) * follow;
     world.rotation.set(pitch + Math.sin(now / 19000) * .012 * idleMix, yaw + Math.sin(now / 23000) * .026 * idleMix, -.07);
-    surfaceProgress.update({camera,plane,progress:progress*100,phase,scroll,color:palette.route.getStyle()});
+    memories.update({camera,zoom:cameraZoom,scroll,themeMix});
+    markers.forEach(marker=>marker.dot.scale.setScalar(1-cameraZoom*.55));
+    surfaceProgress.update({camera,plane,progress:progress*100,phase,scroll,color:palette.route.getStyle(),zoom:cameraZoom});
     renderer.render(scene, camera);
     zoomChanging = false;
-    const moving = Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) > .0002;
+    const moving = distanceMoving || Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) > .0002;
     if (((idle || moving || dragging || resetting || idleMix > .0002) && scroll < .98) || themeMoving) frame = requestAnimationFrame(draw);
   }
   function invalidate() { if (!frame && visible) frame = requestAnimationFrame(draw); }
@@ -363,7 +389,13 @@ export async function mountGlobe(container) {
     if (!width || !height) return;
     const ratio = Math.min(devicePixelRatio || 1, innerWidth < 600 ? 1.5 : 1.8);
     if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
-    renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); invalidate();
+    // Overscan keeps the enlarged sphere continuous beyond the original widget bounds.
+    const overscan=1.85;
+    renderer.setSize(width*overscan, height*overscan, false);
+    canvas.style.width=`${width*overscan}px`;canvas.style.height=`${height*overscan}px`;
+    canvas.style.left=`${width*(1-overscan)/2}px`;canvas.style.top=`${height*(1-overscan)/2}px`;
+    camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(35/2))*overscan));
+    camera.aspect = width / height; camera.updateProjectionMatrix(); invalidate();
   }
   canvas.addEventListener('pointerdown', event => {
     if (scroll > .5 || event.button && event.pointerType === 'mouse') return;
@@ -376,6 +408,7 @@ export async function mountGlobe(container) {
   canvas.addEventListener('pointermove', event => {
     if (!drag || event.pointerId !== drag.id) return;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+    if (Math.hypot(dx,dy) < 4 && !dragging) return;
     if (drag.touch && !dragging && (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.2)) return;
     touched = true; dragging = true; canvas.classList.add('is-dragging');
     const scale = 4 / container.getBoundingClientRect().width;
@@ -383,13 +416,23 @@ export async function mountGlobe(container) {
     container.dataset.rotated = 'true'; invalidate();
   });
   function stopDrag() { drag = null; dragging = false; canvas.classList.remove('is-dragging'); }
-  canvas.addEventListener('pointerup', stopDrag); canvas.addEventListener('pointercancel', stopDrag); canvas.addEventListener('lostpointercapture', stopDrag);
+  canvas.addEventListener('pointerup', event => {
+    const click = drag && !dragging && Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<7;
+    stopDrag();
+    if (!click || scroll>.2) return;
+    const rect=canvas.getBoundingClientRect();
+    raycaster.setFromCamera(new THREE.Vector2((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2),camera);
+    world.updateMatrixWorld(true);
+    const hit=raycaster.intersectObject(sphere)[0];
+    if(hit){const p=world.worldToLocal(hit.point).normalize();memories.pick(Math.atan2(p.x,p.z)*180/Math.PI,Math.asin(p.y)*180/Math.PI);}
+  }); canvas.addEventListener('pointercancel', stopDrag); canvas.addEventListener('lostpointercapture', stopDrag);
   function interruptReset() {
     if (!resetting) return;
     resetting = null; targetYaw = yaw; targetPitch = pitch; touched = true;
   }
   function reset({ preserveZoom = false } = {}) {
     stopDrag();
+    selectedView=null; memories.clear();
     resetting = { yaw: world.rotation.y, pitch: world.rotation.x, started: performance.now() };
     // Preserve the last rendered pose, including its subtle idle motion.
     ({ yaw, pitch } = resetPose(resetting.yaw, resetting.pitch, homeYaw, homePitch, 0));
@@ -422,9 +465,10 @@ export async function mountGlobe(container) {
   return {
     update(value) { progress = clampProgress(value.progress / 100); phase = value.phase; positionPlane(); invalidate(); },
     pending() { phase = 'pending'; positionPlane(); invalidate(); },
-    setZoom(value) { const next = clampProgress(value); zoomChanging ||= Math.abs(next - cameraZoom) > .00001; cameraZoom = next; camera.position.z = globeCameraDistance(next); invalidate(); },
+    setZoom(value) { const next = clampProgress(value); zoomChanging ||= Math.abs(next - cameraZoom) > .00001; cameraZoom = next; invalidate(); },
     setScroll(value) {
       scroll = value; canvas.tabIndex = scroll < .5 ? 0 : -1;
+      if(scroll>.25 && selectedView){selectedView=null;memories.clear();}
       container.dataset.interactive = scroll < .5 ? 'true' : 'false';
       const opacity = Math.max(0, 1 - scroll * 2);
       futureMaterial.opacity = opacity * .8; trailMaterial.opacity = opacity;

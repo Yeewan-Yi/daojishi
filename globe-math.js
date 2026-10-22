@@ -9,8 +9,8 @@ export const ROUTE_RADIUS = 1.012;
 export const AIRCRAFT_RADIUS = 1.065;
 export const VIEW_RESET_DURATION = 800;
 
-// A small increase over the original 1.08 approach; zoom never changes the scene style.
-export const globeCameraDistance = zoom => 4.4 - clampProgress(zoom) * 1.23;
+// Reveal borders and shared cities as the globe approaches, without changing scenes.
+export const globeCameraDistance = zoom => 4.4 - clampProgress(zoom) * 2.25;
 
 export function easeViewReset(progress) {
   const t = clampProgress(progress);

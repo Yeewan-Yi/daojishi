@@ -80,9 +80,9 @@ test('aircraft labels remain in view even when the aircraft passes behind the gl
   }
 });
 
-test('simple zoom approaches continuously with a slightly larger bounded maximum', () => {
-  close(globeCameraDistance(0), 4.4); close(globeCameraDistance(1), 3.17);
-  close(globeCameraDistance(2), 3.17); close(globeCameraDistance(-1), 4.4);
+test('closer globe zoom remains outside the surface and clamps at either end', () => {
+  close(globeCameraDistance(0), 4.4); close(globeCameraDistance(1), 2.15);
+  close(globeCameraDistance(2), 2.15); close(globeCameraDistance(-1), 4.4);
   for (let i=1;i<=100;i++) assert.ok(globeCameraDistance(i/100)<globeCameraDistance((i-1)/100));
 });
 

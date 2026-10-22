@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { JOURNEY_CITIES, aircraftBeacon, percentageParts, spherePoint, useAircraftLabel } from './globe-math.js?v=20261022-long-journey';
+import { JOURNEY_CITIES, aircraftBeacon, percentageParts, spherePoint, useAircraftLabel } from './globe-math.js?v=20261022-memory-atlas';
 
 export function mountSurfaceProgress(world, container) {
   const longitude = -92, latitude = 14, width = 54, height = 18, columns = 48, rows = 16;
@@ -43,7 +43,7 @@ export function mountSurfaceProgress(world, container) {
     texture.needsUpdate = true; major.textContent = parts.major; minor.textContent = parts.minor;
   }
   return {
-    update({ camera, plane, progress, phase, scroll, color }) {
+    update({ camera, plane, progress, phase, scroll, color, zoom = 0 }) {
       paint(progress, color);
       const opacity = scroll < .18 ? 1 : 0, active = phase !== 'pending' && opacity > .001;
       mesh.visible = active;
@@ -52,9 +52,10 @@ export function mountSurfaceProgress(world, container) {
         const position = city.point.clone().applyMatrix4(world.matrixWorld);
         const facing = position.clone().normalize().dot(camera.position.clone().sub(position).normalize());
         const projected = position.project(camera);
-        city.label.style.opacity = active && facing > .12 && Math.abs(projected.x) < .94 && Math.abs(projected.y) < .9 ? '1' : '0';
-        city.label.style.left = `${(projected.x + 1) * container.clientWidth / 2}px`;
-        city.label.style.top = `${(1 - projected.y) * container.clientHeight / 2}px`;
+        city.label.style.opacity = active && zoom < .42 && facing > .12 && Math.abs(projected.x) < .94 && Math.abs(projected.y) < .9 ? '1' : '0';
+        const viewport=container.querySelector('canvas.globe-canvas');
+        city.label.style.left = `${container.clientWidth/2 + projected.x * (viewport?.clientWidth||container.clientWidth) / 2}px`;
+        city.label.style.top = `${container.clientHeight/2 - projected.y * (viewport?.clientHeight||container.clientHeight) / 2}px`;
         city.label.style.color = color;
       }
       if (!active) { beacon.style.opacity = '0'; return; }
@@ -72,9 +73,10 @@ export function mountSurfaceProgress(world, container) {
       const edge = new THREE.Vector3(1, 0, 0).project(camera), rect = container.getBoundingClientRect(), scale = rect.width / container.clientWidth;
       const stage = container.closest('.journey-scene')?.getBoundingClientRect() || {left:0,right:innerWidth};
       const width = container.clientWidth, height = container.clientHeight, half = beacon.offsetWidth / 2;
+      const viewport=container.querySelector('canvas.globe-canvas'),renderWidth=viewport?.clientWidth||width,renderHeight=viewport?.clientHeight||height;
       const left = Math.max(half + 8, (Math.max(0,stage.left) + 12 - rect.left) / scale + half), right = Math.min(width - half - 8, (Math.min(innerWidth,stage.right) - 12 - rect.left) / scale - half);
       const top = Math.max(24, (16 - rect.top) / scale + 24), bottom = Math.min(height - 24, (innerHeight * .72 - 16 - rect.top) / scale - 24);
-      const position = aircraftBeacon({ x: (p.x + 1) * width / 2, y: (1 - p.y) * height / 2 }, { x: (center.x + 1) * width / 2, y: (1 - center.y) * height / 2 }, Math.abs(edge.x - center.x) * width * .49, planeFacing > .08, { left, right: Math.max(left, right), top, bottom: Math.max(top, bottom) });
+      const position = aircraftBeacon({ x: width/2+p.x*renderWidth/2, y: height/2-p.y*renderHeight/2 }, { x: width/2+center.x*renderWidth/2, y: height/2-center.y*renderHeight/2 }, Math.abs(edge.x - center.x) * renderWidth * .49, planeFacing > .08, { left, right: Math.max(left, right), top, bottom: Math.max(top, bottom) });
       beacon.style.left = `${position.x}px`; beacon.style.top = `${position.y}px`; beacon.style.color = color;
       beacon.dataset.occluded = String(planeFacing <= .08);
     },

@@ -1,9 +1,9 @@
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
-import { mountFlight, flightStage } from './flight.js?v=20261022-long-journey';
+import { mountFlight, flightStage } from './flight.js?v=20261022-memory-atlas';
 import { mountFlipClock } from './flip-clock.js';
-import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261022-long-journey';
-import { mountLetters } from './letters-ui.js?v=20261021-experience';
+import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261022-memory-atlas';
+import { mountLetters } from './letters-ui.js?v=20261022-memory-atlas';
 import {startBoot} from './boot.js?v=20261021-experience';
 import {openModal,closeModal,bindModalMotion} from './motion.js?v=20261021-experience';
 import {mountDatePicker} from './date-picker.js?v=20261021-experience';
@@ -448,7 +448,7 @@ function installScrollScene() {
     if (performance.now() - previousPaint > 100) previousPaint = performance.now() - 16;
     frame = requestAnimationFrame(paint);
   }
-  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select,.letters-dock');
+  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select,.letters-dock,.memory-atlas,.atlas-trigger');
   function advanceView(delta, scrollScale = 1) {
     const now = performance.now(), elapsed = now - lastZoomInput;
     const next = explorationInput(zoomTarget, delta, elapsed > 220 ? 40 : elapsed);
@@ -487,6 +487,7 @@ function installScrollScene() {
     zoomReset = { from: zoom, started: event.detail?.started ?? performance.now() };
     zoomTarget = 0; requestPaint();
   });
+  addEventListener('journey-country-focus',()=>{window.scrollTo({top:0,behavior:'instant'});zoomReset=null;zoomTarget=1;requestPaint();});
   addEventListener('keydown', event => { if (event.key === 'Escape' && !document.querySelector('dialog[open]') && zoomTarget > .2) globe3d?.reset(); });
   addEventListener('scroll', requestPaint, { passive: true });
   addEventListener('resize', requestPaint);
@@ -500,10 +501,11 @@ function installScrollScene() {
 const initialData=initialize();
 boot.advance(.43);
 lettersUI = mountLetters({getContext:()=>({room,record:cloudRecord}),openSharing:()=>$('share-button').click(),notify:toast});
+addEventListener('journey-city-memory',event=>{const city=event.detail?.city;if(['南京','绍兴'].includes(city))lettersUI?.composeCity(city);});
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-const globeReady=import('./globe-3d.js?v=20261022-long-journey').then(async ({ mountGlobe }) => {
+const globeReady=import('./globe-3d.js?v=20261022-memory-atlas').then(async ({ mountGlobe }) => {
   boot.advance(.65);
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;
