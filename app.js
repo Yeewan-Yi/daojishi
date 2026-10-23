@@ -1,5 +1,5 @@
 import {brandMark} from './symbols.js?v=20261023-covers';
-import {mountReleaseNotes} from './release-notes.js?v=20261023-albums';
+import {mountReleaseNotes} from './release-notes.js?v=20261024-city-switch';
 import {journeyLink} from './journey-data.js?v=20261023-albums';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';

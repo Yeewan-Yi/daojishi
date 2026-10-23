@@ -2,6 +2,7 @@ import {openModal,closeModal} from './motion.js';
 
 // Keep this list limited to changes included in the deployed site.
 export const releases=[
+ {version:'2026.10.24.1',date:'2026-10-24',title:'从城名，去往下一城',items:['点击拾光的大字城市标题，即可搜索并切换所有已点亮的城市；列表优先展示同省州、同国家和同洲，并标明完整地区。']},
  {version:'2026.10.23.3',date:'2026-10-23',title:'让每一城，都有自己的相册',items:['拾光新增相册：支持创建、重命名、删除、批量归类和直接上传到相册；删除相册会保留其中影像。','拾光可按洲、国家、省州与城市查找已点亮的履痕；主站导航整合履痕入口，同步状态由有期标记的颜色表达。']},
   {version:'2026.10.23.2',date:'2026-10-23',title:'为回忆，选一组封面',items:['拾光支持展示共享封面，并可在封面大图之间连续翻看。照片助手可在本机进行画面主题识别、相似照片比较与封面初选，名称建议支持人工核对。']},
   {version:'2026.10.23.1',date:'2026-10-23',title:'把相册，带进每一城',items:[

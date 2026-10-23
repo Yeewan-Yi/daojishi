@@ -1,9 +1,9 @@
-import {journeyTree} from './journey-navigation.js?v=20261023-albums';
+import {journeyTree,cityChoices} from './journey-navigation.js?v=20261024-city-switch';
 import {createAlbumLoader,dismissAlbumLoader} from './album-loader.js?v=20261023-photos';
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261023-albums';
 import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion} from './motion.js';
-import {mountReleaseNotes} from './release-notes.js?v=20261023-header-navigation';
+import {mountReleaseNotes} from './release-notes.js?v=20261024-city-switch';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 mountReleaseNotes();
 $('brand-emblem').innerHTML=brandMark;$('trail-emblem').innerHTML=trailMark;
@@ -17,6 +17,7 @@ $('private-caption').textContent=client.local?'当前资料保存在此浏览器
 
 const albumDialog=document.createElement('dialog');albumDialog.id='album-dialog';albumDialog.className='paper-dialog album-dialog';albumDialog.innerHTML='<form id="album-form"><div class="dialog-heading"><h2 id="album-dialog-title">新建相册</h2><button type="button" class="close-action" data-close="album-dialog" aria-label="关闭相册窗口">×</button></div><label id="album-name-label">相册名称<input id="album-name" maxlength="60" required autocomplete="off"></label><label id="album-destination-label" hidden>归入相册<select id="album-destination"></select></label><p id="album-dialog-hint"></p><p id="album-dialog-error" role="alert"></p><button class="ink-action" id="album-confirm">保存</button></form>';document.body.append(albumDialog);
 let albumRows=[],activeAlbum='',albumMode='',albumMoveIds=[],selectingMedia=false,countryIndex={},activeContinent='';const selectedMedia=new Set();
+const citySwitch=document.createElement('dialog');citySwitch.id='city-switch-dialog';citySwitch.className='paper-dialog city-switch-dialog';citySwitch.setAttribute('aria-labelledby','city-switch-title');citySwitch.innerHTML='<div class="dialog-heading"><h2 id="city-switch-title">切换城市</h2><button type="button" class="close-action" data-close="city-switch-dialog" aria-label="关闭城市选择">×</button></div><label class="city-search-label"><span class="sr-only">搜索已去过的城市</span><input id="city-switch-search" type="search" autocomplete="off" placeholder="搜索城市、国家或省州" aria-label="搜索已去过的城市"></label><div id="city-switch-list" class="city-switch-list"></div>';document.body.append(citySwitch);
 bindModalMotion();for(const button of document.querySelectorAll('[data-close]'))button.onclick=()=>{if(uploading&&button.dataset.close==='upload-dialog')return;closeModal($(button.dataset.close));};
 for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('cancel',e=>{e.preventDefault();if(dialog.id==='upload-dialog'&&uploading)return;closeModal(dialog);});
 const uploadIds=new WeakMap();
@@ -127,4 +128,9 @@ $('album-form').onsubmit=async e=>{e.preventDefault();const city=current.propert
 
 document.addEventListener('pointerdown',event=>{if(!event.target.closest('.city-index'))closeDestinationMenus();});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&event.target.closest('.city-index')){event.preventDefault();closeDestinationMenus();}});
+function paintCityChoices(){const parent=$('city-switch-list');parent.replaceChildren();const rows=cityChoices(cities,current,countryIndex,$('city-switch-search').value);let previous=-1,group;
+ for(const row of rows){if(previous!==row.rank){group=document.createElement('section');const title=document.createElement('h3');title.textContent=['同省 / 州','同国家','同洲','其他地区'][row.rank];group.append(title);parent.append(group);previous=row.rank;}const button=document.createElement('button');button.type='button';button.className='city-switch-option';const name=document.createElement('span'),description=document.createElement('small');name.textContent=row.city.properties.name;description.textContent=row.description;button.append(name,description);if(row.city.properties.id===current?.properties.id){button.classList.add('is-current');button.setAttribute('aria-current','page');const mark=document.createElement('i');mark.textContent='当前';button.append(mark);}button.onclick=()=>{closeModal(citySwitch);if(row.city.properties.id!==current?.properties.id)selectCity(row.city);};group.append(button);}
+ if(!rows.length){const empty=document.createElement('p');empty.className='city-switch-empty';empty.textContent=$('city-switch-search').value.trim()?'没有找到匹配的已点亮城市。':'先在履痕中点亮一座城市。';parent.append(empty);}}
+$('city-title').onclick=()=>{if(uploading)return toast('影像上传完成后可切换城市。');$('city-switch-search').value='';paintCityChoices();openModal(citySwitch);if(matchMedia('(hover:hover)').matches)$('city-switch-search').focus({preventScroll:true});};$('city-switch-search').oninput=paintCityChoices;
+
 init();
