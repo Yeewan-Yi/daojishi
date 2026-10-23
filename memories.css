@@ -11,3 +11,14 @@ html[data-theme=dark] body{background:radial-gradient(ellipse at 80% 0,#19283e55
 @media(prefers-reduced-motion:reduce){.album-flight svg{animation:none;left:63px}.memory-image-button img,.album-tile-caption{transition:none}}
 
 .album-covers{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:12px 0 25px}.album-covers[hidden]{display:none}.album-covers button{padding:0;aspect-ratio:1.22;background:var(--wash);overflow:hidden}.album-covers img{width:100%;height:100%;object-fit:cover;transition:transform .4s}.album-covers button:hover img{transform:scale(1.04)}@media(max-width:700px){.album-covers{grid-template-columns:repeat(3,minmax(0,1fr))}.album-covers button:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}}
+.album-loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-height:198px;padding:28px 0;color:var(--muted);overflow:hidden;animation:selection-arrive .4s ease both;transition:opacity .3s ease,transform .3s ease,min-height .3s ease}
+.album-loader.is-leaving{opacity:0;transform:translateY(-6px);pointer-events:none}
+.photo-selection{position:relative;display:block;width:244px;height:98px;isolation:isolate}
+.selection-print{position:absolute;left:88px;top:18px;width:68px;height:68px;padding:5px 5px 12px;background:var(--paper);border:1px solid color-mix(in srgb,var(--muted) 36%,transparent);box-shadow:0 4px 12px #0000000b;transform:translateX(calc((var(--i) - 2)*32px)) rotate(calc((var(--i) - 2)*9deg));animation:select-photo 4.8s cubic-bezier(.4,0,.2,1) infinite;animation-delay:calc(var(--i)*-.96s)}
+.selection-print svg{display:block;width:100%;height:100%;background:color-mix(in srgb,var(--muted) 12%,var(--paper));fill:color-mix(in srgb,var(--muted) 30%,transparent)}
+.selection-print svg circle{fill:color-mix(in srgb,var(--muted) 45%,transparent)}
+.selection-corners{position:absolute;inset:0 77px 0;z-index:8;background:linear-gradient(currentColor,currentColor) left top/9px 1px no-repeat,linear-gradient(currentColor,currentColor) left top/1px 9px no-repeat,linear-gradient(currentColor,currentColor) right bottom/9px 1px no-repeat,linear-gradient(currentColor,currentColor) right bottom/1px 9px no-repeat;opacity:.45}
+.selection-caption{font-size:12px;letter-spacing:3px}
+@keyframes select-photo{0%,100%{transform:translateX(calc((var(--i) - 2)*32px)) rotate(calc((var(--i) - 2)*9deg));z-index:1;opacity:.6}18%,38%{transform:translate(0,-15px) rotate(-3deg) scale(1.08);z-index:6;opacity:1}58%,80%{transform:translateX(calc((var(--i) - 2)*32px)) rotate(calc((var(--i) - 2)*9deg));z-index:1;opacity:.6}}
+@keyframes selection-arrive{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.selection-print{animation:none}.selection-print:nth-child(3){transform:translateY(-10px);z-index:6;opacity:1}.album-loader{animation:none;transition:none}}
