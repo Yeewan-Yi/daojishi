@@ -23,3 +23,15 @@ html[data-theme=dark] body{background:radial-gradient(ellipse at 80% 0,#19283e55
 @keyframes selection-arrive{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.selection-print{animation:none}.selection-print:nth-child(3){transform:translateY(-10px);z-index:6;opacity:1}.album-loader{animation:none;transition:none}}
 .viewer-stage .viewer-preview{filter:blur(2px);opacity:.8}
+body{background-size:160% 160%;animation:memory-light 38s ease-in-out infinite alternate}
+@keyframes memory-light{0%{background-position:0% 20%}50%{background-position:80% 65%}100%{background-position:25% 100%}}
+.city-slogan{color:var(--muted);font-size:13px;letter-spacing:2px;margin:18px 0 0}
+.city-index-list{display:block;max-height:65svh;overflow:auto;overscroll-behavior:contain}
+.continent-tabs{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 22px}.continent-tabs button{font-size:12px;padding:5px 7px;border-bottom:1px solid transparent}.continent-tabs button.is-active{border-color:var(--accent);color:var(--strong)}.continent-tabs button:disabled{opacity:.28}
+.country-branch>summary{font-size:18px;cursor:pointer;padding:12px 0}.region-branch{margin:5px 0 16px 10px}.region-branch>summary{font-size:12px;color:var(--muted);cursor:pointer;padding:7px 0}.region-branch .city-choice{padding:10px 0 10px 12px;font-size:16px}.country-branch summary::marker{font-size:9px;color:var(--accent)}
+.album-shelf{display:flex;align-items:center;flex-wrap:wrap;gap:16px;padding:16px 0;border-top:1px solid var(--line)}.album-shelf label{display:flex;align-items:center;gap:13px;color:var(--muted);font-size:12px}.album-shelf select{max-width:280px}.album-shelf select,.album-dialog select,.upload-fields select{font:inherit;color:var(--text);background:var(--paper);border:1px solid var(--line);border-radius:0;padding:9px 12px}.album-selection{display:flex;align-items:center;gap:20px;padding:5px 0 15px;font-size:12px;color:var(--muted)}
+.album-dialog{width:440px;padding:30px}.album-dialog label{display:flex;flex-direction:column;gap:12px;font-size:13px}.album-dialog label[hidden]{display:none}.album-dialog input{background:transparent;color:var(--text);border:0;border-bottom:1px solid var(--line);padding:12px 0}.album-dialog p{font-size:13px;line-height:1.9;color:var(--muted)}#album-dialog-error{color:#b17063}.album-dialog .ink-action{margin-top:18px}
+.is-selecting .memory-image-button:after{content:' ';position:absolute;right:12px;top:12px;width:18px;height:18px;border:1px solid #fff;background:#15334277;z-index:2}.is-selecting .is-selected .memory-image-button:after{content:'✓';color:#fff;text-align:center;background:#466c7f}.is-selecting .is-selected{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:680px){.city-index-list{display:block;max-height:270px}.continent-tabs{margin-bottom:8px}.country-branch{display:inline-block;vertical-align:top;margin-right:24px}.region-branch .city-choice{display:block;white-space:normal}.album-shelf{gap:12px}.album-shelf select{max-width:200px}.city-slogan{font-size:12px}}
+
+html[data-theme=dark] body{background-size:160% 160%}

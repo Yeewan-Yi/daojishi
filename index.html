@@ -14,13 +14,13 @@
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./flight.css">
   <link rel="stylesheet" href="./refined.css">
-  <link rel="stylesheet" href="./memory-map.css?v=20261022-album">
+  <link rel="stylesheet" href="./memory-map.css?v=20261023-albums">
   <link rel="stylesheet" href="./scene.css?v=20261022-album">
   <link rel="stylesheet" href="./fonts.css">
   <link rel="stylesheet" href="./letters.css?v=20261021-experience">
   <link rel="stylesheet" href="./experience.css?v=20261021-experience">
   <link rel="stylesheet" href="./release-notes.css?v=20261022-album">
-  <script type="module" src="./app.js?v=20261023-covers"></script>
+  <script type="module" src="./app.js?v=20261023-albums"></script>
 </head>
 <body>
   <div id="boot-screen" role="status" aria-live="polite" aria-hidden="true"><div class="boot-panel"><div class="boot-name">有期</div><div class="boot-path"><span class="boot-fill"></span><span class="boot-end"></span><span class="boot-plane-motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2 8 7 5v2l-8-3v6l3 2v1l-4-1-4 1v-1l3-2v-6l-8 3v-2l7-5z"/></svg></span></div><div class="boot-caption">正在准备航程</div></div></div>
@@ -48,7 +48,6 @@
       <a class="brand" href="./" aria-label="有期首页"><span class="brand-mark"><svg><use href="#i-clock"/></svg></span><span>有期</span></a>
       <div class="header-actions" role="group" aria-label="页面工具">
         <button class="icon-button nav-tool" id="theme-button" aria-label="切换深色模式"><svg aria-hidden="true"><use href="#nav-moon"/></svg><span class="nav-caption" aria-hidden="true">切换深色模式</span></button>
-        <button class="icon-button nav-tool" id="focus-button" aria-label="进入专注模式"><svg aria-hidden="true"><use href="#nav-focus"/></svg><span class="nav-caption" aria-hidden="true">专注</span></button>
         <button class="icon-button nav-tool" id="edit-button" aria-label="编辑"><svg aria-hidden="true"><use href="#nav-edit"/></svg><span class="nav-caption" aria-hidden="true">编辑</span></button>
         <button class="icon-button nav-tool" id="share-button" aria-label="分享"><svg aria-hidden="true"><use href="#nav-share"/></svg><span class="nav-caption" aria-hidden="true">分享</span></button>
       </div>
@@ -77,13 +76,11 @@
         <div class="date-point"><span class="date-content"><span class="date-label">故事的起点</span><span class="date-value" id="start-date"></span><span class="date-time" id="start-time"></span></span></div>
         <div class="date-point"><span class="date-content"><span class="date-label">期待的日子</span><span class="date-value" id="end-date"></span><span class="date-time" id="end-time"></span></span></div>
       </section>
-      <div class="below-card"><div class="sync-status"><span class="save-status" id="save-status"><svg><use href="#i-check"/></svg><span id="save-label">已保存在此设备</span></span><button class="text-button" id="retry-sync" hidden>重试连接</button></div></div>
+      <div class="below-card"><div class="sync-status sr-only"><span class="save-status" id="save-status"><svg><use href="#i-check"/></svg><span id="save-label">已保存在此设备</span></span><button class="text-button" id="retry-sync" hidden>重试连接</button></div></div>
       <span class="scroll-cue" id="scroll-cue" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span>
       </div>
     </main>
   </div>
-
-  <button class="button exit-focus" id="exit-focus" hidden><svg><use href="#i-close"/></svg>退出专注</button>
 
   <dialog id="edit-dialog" class="modal"><form id="edit-form"><div class="modal-heading"><div><span class="eyebrow">MAKE IT YOURS</span><h2>为期待，定个时间。</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭"><svg><use href="#i-close"/></svg></button></div><p class="modal-description">一个想见的人，一件想完成的事，都值得期待。</p><label for="title-input">倒计时标题 <span>最多 40 字</span></label><input id="title-input" name="title" type="text" maxlength="40" required autocomplete="off" placeholder="例如：下一次见面"><label id="start-input-label">开始时间</label><input id="start-input" name="start" type="hidden"><button type="button" class="date-select-button" id="start-date-button" aria-labelledby="start-input-label"><svg aria-hidden="true"><use href="#i-calendar"/></svg><span id="start-date-value"></span><span id="start-clock-value"></span><svg class="date-select-chevron" aria-hidden="true"><use href="#i-arrow"/></svg></button><label id="end-input-label">截止时间</label><input id="end-input" name="end" type="hidden"><button type="button" class="date-select-button" id="end-date-button" aria-labelledby="end-input-label"><svg aria-hidden="true"><use href="#i-calendar"/></svg><span id="end-date-value"></span><span id="end-clock-value"></span><svg class="date-select-chevron" aria-hidden="true"><use href="#i-arrow"/></svg></button><p class="field-note" id="edit-timezone"></p><p class="form-error" id="form-error" role="alert"></p><div class="modal-actions"><button type="button" class="button close-dialog">取消</button><button type="submit" class="button button-primary">保存倒计时<svg><use href="#i-check"/></svg></button></div></form></dialog>
 

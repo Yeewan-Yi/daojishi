@@ -45,6 +45,20 @@ const album=await call(a,'album',{city:feature.properties.id});ok(album.months.l
 await role('postgres');await db.query('update youqi_private.journey_media set is_cover=true where id=$1',[id]);await role('anon');ok((await call(a,'covers',{city:feature.properties.id},q)).items.length===1,'Selected covers are shared with the second person');await denied(()=>call(a,'covers',{city:feature.properties.id},r),'42501','Cover thumbnails retain personal room isolation');
 await denied(()=>call(a,'list',{city:feature.properties.id,month:'2026-13'}),'22023','Invalid month filters are rejected before querying');
 await role('postgres');await db.exec(`insert into storage.objects values('existing-letters','{"size":700000000}')`);await role('service_role');await denied(()=>call(a,'media_reserve',{...reservation,media_id:'80000000-0000-4000-8000-000000000008'}),'P0001','Capacity protection counts existing storage before reserving a new upload');await role('postgres');
-const protection=await db.query(`select count(*)::integer as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='youqi_private' and c.relname like 'journey_%' and c.relkind='r' and c.relrowsecurity`);ok(protection.rows[0].count===6,'All six archive tables and the public-map cache enable RLS');
+
+await role('anon');const albumId='80000000-0000-4000-8000-000000000008';
+await call(a,'album_save',{city:'cn:320100',album_id:albumId,name:'红山动物园'});
+ok((await call(a,'albums',{city:'cn:320100'},q)).items.some(x=>x.id===albumId),'Albums are shared with the second person');
+await call(a,'album_save',{city:'cn:320100',album_id:albumId,name:'游园'},q);
+ok((await call(a,'albums',{city:'cn:320100'})).items.find(x=>x.id===albumId).name==='游园','Second person can rename an album');
+await denied(()=>call(a,'album_save',{city:'cn:320100',album_id:albumId,name:'越界'},r),'42501','Cross-room identities cannot rename albums');
+await denied(()=>call(a,'album_move',{city:'cn:330600',album_id:albumId,media_ids:[id]}),'42501','Albums cannot be used in another city');
+await call(a,'album_move',{city:'cn:320100',album_id:albumId,media_ids:[id]});
+ok((await call(a,'list',{city:'cn:320100',album:albumId})).items.some(x=>x.id===id),'Album filtering returns moved media');
+await call(a,'album_delete',{city:'cn:320100',album_id:albumId},q);
+let unfiled=await call(a,'list',{city:'cn:320100',album:'unfiled'});while(!unfiled.items.some(x=>x.id===id)&&unfiled.cursor)unfiled=await call(a,'list',{city:'cn:320100',album:'unfiled',before:unfiled.cursor});ok(unfiled.items.some(x=>x.id===id),'Deleting an album preserves its media as unfiled');
+await denied(()=>call(a,'album_move',{city:'cn:320100',album_id:albumId,media_ids:[id]}),'42501','Deleted albums cannot receive media');
+
+const protection=await db.query(`select count(*)::integer as count from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='youqi_private' and c.relname like 'journey_%' and c.relkind='r' and c.relrowsecurity`);ok(protection.rows[0].count===7,'Archive tables including albums and the public-map cache enable RLS');
 console.log(`Archive PostgreSQL verification: ${checks} checks passed.`);
 }catch(e){console.error({message:e.message,code:e.code,detail:e.detail,where:e.where,position:e.position});process.exitCode=1;}finally{await db.close();}

@@ -1,6 +1,6 @@
 import {brandMark} from './symbols.js?v=20261023-covers';
-import {mountReleaseNotes} from './release-notes.js?v=20261023-covers';
-import {journeyLink} from './journey-data.js?v=20261023-covers';
+import {mountReleaseNotes} from './release-notes.js?v=20261023-albums';
+import {journeyLink} from './journey-data.js?v=20261023-albums';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js?v=20261023-covers';
@@ -129,6 +129,7 @@ function setSaveLabel() {
     setup: '云端尚未初始化 · 需运行初始化 SQL',
     denied: '共享链接已失效或无权访问'
   }[cloudStatus] : !saved ? '暂未保存，关闭后可能丢失' : sharedView ? '分享快照 · 修改仅保存在本机' : '已保存在此设备';
+  const brand=document.querySelector('.brand');brand.dataset.sync=!navigator.onLine?'offline':invalidRoomLink?'denied':room?cloudStatus:'local';brand.title=$('save-label').textContent;brand.setAttribute('aria-label','有期 · '+$('save-label').textContent);
   $('retry-sync').hidden = !room || ['synced', 'loading', 'saving'].includes(cloudStatus);
 }
 
@@ -382,19 +383,6 @@ $('theme-button').addEventListener('click', () => {
   try { localStorage.setItem('youqi.theme', theme); } catch { /* The theme still works without storage. */ }
 });
 
-function focusMode(enabled) {
-  if (enabled) lettersUI?.close();
-  document.body.classList.toggle('focus-mode', enabled);
-  $('exit-focus').hidden = !enabled;
-  if (enabled) $('exit-focus').focus();
-  else $('focus-button').focus();
-}
-$('focus-button').addEventListener('click', () => focusMode(true));
-$('exit-focus').addEventListener('click', () => focusMode(false));
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !document.querySelector('dialog[open]')) focusMode(false);
-});
-
 window.addEventListener('storage', event => {
   if (event.key === 'youqi.theme' && ['dark', 'light'].includes(event.newValue)) applyTheme(event.newValue);
   if (event.key !== STORAGE_KEY || !event.newValue || sharedView || room) return;
@@ -408,7 +396,7 @@ window.addEventListener('storage', event => {
   } catch { /* Ignore invalid external records. */ }
 });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); refreshCloud(); } });
-window.addEventListener('online', refreshCloud);
+window.addEventListener('online',()=>{setSaveLabel();refreshCloud();});window.addEventListener('offline',setSaveLabel);
 window.addEventListener('pageshow', tick);
 window.addEventListener('hashchange', () => location.reload());
 function installScrollScene() {
@@ -465,6 +453,8 @@ function installScrollScene() {
     lastZoomInput = now; requestPaint();
   }
   addEventListener('wheel', event => {
+    if(event.defaultPrevented||event.ctrlKey)return;
+    const panel=event.target.closest?.('.memory-atlas,.letters-dock,dialog[open],.version-panel');if(panel){event.preventDefault();const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?panel.clientHeight:1);let scroller=event.target;while(scroller&&scroller!==panel&&!(scroller.scrollHeight>scroller.clientHeight+1&&['auto','scroll'].includes(getComputedStyle(scroller).overflowY)))scroller=scroller.parentElement;(scroller||panel).scrollTop+=delta;return;}
     if (event.ctrlKey || !canZoom(event.target) || scrollY > 1) return;
     if (event.deltaY < 0 || zoomTarget > 0 || zoomReset && zoom > 0) {
       event.preventDefault();
@@ -506,7 +496,7 @@ function installScrollScene() {
   new MutationObserver(requestPaint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   paint();
 }
-document.querySelector('.brand-mark').innerHTML=brandMark;
+document.querySelector('.brand-mark').innerHTML=brandMark;document.querySelector('.brand').addEventListener('click',event=>{if(room&&['offline','setup','denied'].includes(cloudStatus)){event.preventDefault();refreshCloud();}});
 const initialData=initialize();
 document.querySelector('.brand').href=journeyLink('./');
 boot.advance(.43);
@@ -515,7 +505,7 @@ addEventListener('journey-city-memory',event=>{const city=event.detail?.city;if(
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-const globeReady=import('./globe-3d.js?v=20261023-covers').then(async ({ mountGlobe }) => {
+const globeReady=import('./globe-3d.js?v=20261023-albums').then(async ({ mountGlobe }) => {
   boot.advance(.65);
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;
