@@ -3,7 +3,7 @@ import {createAlbumLoader,dismissAlbumLoader} from './album-loader.js?v=20261023
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261023-albums';
 import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion} from './motion.js';
-import {mountReleaseNotes} from './release-notes.js?v=20261023-albums';
+import {mountReleaseNotes} from './release-notes.js?v=20261023-header-navigation';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 mountReleaseNotes();
 $('brand-emblem').innerHTML=brandMark;$('trail-emblem').innerHTML=trailMark;
@@ -33,8 +33,7 @@ function paintCities(){
  const parent=$('city-index-list');parent.replaceChildren();const tree=journeyTree(cities,countryIndex),currentId=current?.properties.id;
  const continent=tree.find(c=>c.countries.some(country=>country.regions.some(region=>region.cities.some(city=>city.properties.id===currentId))))||tree.find(c=>c.countries.length);
  activeContinent=continent?.name||'亚洲';$('city-total').textContent=String(cities.filter(c=>c.properties.visited!==false).length).padStart(2,'0');
- const tabs=document.createElement('div');tabs.className='continent-tabs';tabs.setAttribute('aria-label','按洲查看履痕');
- for(const item of tree){const button=document.createElement('button');button.type='button';button.textContent=item.name;button.disabled=!item.countries.length;button.classList.toggle('is-active',item.name===activeContinent);button.setAttribute('aria-pressed',String(item.name===activeContinent));button.onclick=()=>{const city=item.countries[0]?.regions[0]?.cities[0];if(city)selectCity(city);};tabs.append(button);}parent.append(tabs);
+ const tabs=document.createElement('label');tabs.className='continent-tabs';const caption=document.createElement('span');caption.textContent='洲';const select=document.createElement('select');select.setAttribute('aria-label','洲');for(const item of tree){const option=new Option(item.name,item.name);option.disabled=!item.countries.length;select.append(option);}select.value=activeContinent;select.onchange=()=>{const city=tree.find(item=>item.name===select.value)?.countries[0]?.regions[0]?.cities[0];if(city)selectCity(city);};tabs.append(caption,select);parent.append(tabs);
  const countries=continent?.countries||[],country=countries.find(c=>c.regions.some(r=>r.cities.some(city=>city.properties.id===currentId)))||countries[0],regions=country?.regions||[],region=regions.find(r=>r.cities.some(city=>city.properties.id===currentId))||regions[0];
  const path=document.createElement('div');path.className='location-path';
  const field=(label,rows,value,change)=>{const wrap=document.createElement('label'),caption=document.createElement('span'),select=document.createElement('select');caption.textContent=label;select.setAttribute('aria-label',label);for(const row of rows)select.append(new Option(row.name,row.id));select.value=value||'';select.disabled=!rows.length;select.onchange=()=>change(select.value);wrap.append(caption,select);path.append(wrap);};

@@ -21,7 +21,7 @@ export const releases=[
     '刷新等待时呈现飞机加载动画；日期选择支持滚轮切换月份与年份，航程百分比显示七位小数。']}
 ];
 export function mountReleaseNotes(){
-  const host=document.querySelector('.header-actions')||document.querySelector('.memory-header nav');
+  const host=document.querySelector('.header-actions')||document.querySelector('.memory-header nav[aria-label="页面工具"]');
   if(!host||document.getElementById('version-button'))return;
   const main=host.classList.contains('header-actions'),button=document.createElement('button');
   button.id='version-button';button.type='button';button.className=main?'icon-button nav-tool':'line-action';
