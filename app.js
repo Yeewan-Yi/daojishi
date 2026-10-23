@@ -505,7 +505,7 @@ addEventListener('journey-city-memory',event=>{const city=event.detail?.city;if(
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-const globeReady=import('./globe-3d.js?v=20261023-albums').then(async ({ mountGlobe }) => {
+const globeReady=import('./globe-3d.js?v=20261023-top-navigation').then(async ({ mountGlobe }) => {
   boot.advance(.65);
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;

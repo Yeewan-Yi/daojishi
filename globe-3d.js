@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, detailZoomInput, detailMapFov, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-album';
 import { mountSurfaceProgress } from './globe-labels.js?v=20261022-album';
-import { mountMemoryMap } from './memory-map.js?v=20261023-albums';
+import { mountMemoryMap } from './memory-map.js?v=20261023-top-navigation';
 
 const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#344d3b', future: '#637853', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#243b37', land: '#74886a', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };

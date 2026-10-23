@@ -19,3 +19,4 @@ html[data-boot=pending] .atlas-trigger,html[data-boot=loading] .atlas-trigger,ht
 .letters-dock,dialog,.memory-atlas{overscroll-behavior:contain}.sync-status{display:none}
 @media(max-width:600px){.memory-atlas{width:auto}.atlas-cities{grid-template-columns:repeat(3,minmax(0,1fr))}.header-actions .atlas-trigger>svg{width:25px;height:28px}}
 @media(prefers-reduced-motion:reduce){.brand[data-sync] .brand-mark{animation:none}}
+.atlas-cities .atlas-city{min-height:0;height:auto;flex-direction:row;gap:4px;padding:9px 7px;font-size:14px;line-height:1.4}.atlas-cities .atlas-city>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.atlas-cities .atlas-city>span:last-child{display:none}
