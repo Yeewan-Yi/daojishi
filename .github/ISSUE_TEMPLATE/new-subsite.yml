@@ -1,0 +1,30 @@
+name: 新子页面
+description: 开始一页新的共同功能
+title: "[新页] "
+body:
+  - type: input
+    id: page
+    attributes:
+      label: 页面名称和英文目录
+      placeholder: 例如：同行 / our-story
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: 希望这一页可以做什么
+      description: 写下两个人会怎样使用它，先做最重要的几个操作。
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: 数据与衔接
+      description: 是否要双人同步、上传影像、读取城市？准备从哪里进入、返回哪里？不要填写真实分享链接。
+  - type: checkboxes
+    id: ready
+    attributes:
+      label: 开始前
+      options:
+        - label: 已阅读 CONTRIBUTING.md，使用独立页面目录开发。
+        - label: 先用本地演示数据，新增共享接口在 PR 说明。

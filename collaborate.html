@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>共筑 · 有期</title><link rel="icon" href="./favicon.svg"><link rel="stylesheet" href="./shared/subsite.css"><script type="module" src="./shared/collaborate.js"></script></head><body><div class="site-wrap"><header class="site-header"><a class="site-brand" data-site-brand></a><nav class="site-nav" aria-label="页面导航"><a data-site-link="index.html">有期</a><a data-site-link="memories.html">拾光</a><button class="site-tool" data-theme-toggle aria-label="切换主题"></button></nav></header><main>
+<h1>共筑</h1><p class="quiet">各自写下新的一页，合在一起仍是同一本书。</p>
+<div class="link-list"><a class="text-action" href="https://github.com/Yeewan-Yi/daojishi/fork" target="_blank" rel="noopener noreferrer">① 复制开发仓库 ↗</a><a class="text-action" href="./pages/_starter/index.html?mode=local">② 看看子页面模板 ↗</a><a class="text-action" href="https://github.com/Yeewan-Yi/daojishi/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">完整操作说明 ↗</a></div>
+<section class="rule-section"><h2>开始只需要这几步</h2><ol class="steps"><li>登录自己的 GitHub，点上方「复制开发仓库」，创建自己的 Fork。无需提供密码，也不需要主仓库写权限。</li><li>用 GitHub Desktop 把自己的 Fork 克隆到电脑，并创建分支，例如 <code>codex/our-story</code>。用 VS Code 或自己习惯的 AI 编辑器打开文件夹。</li><li>安装 Node.js 24 LTS，在项目终端执行下面三条命令。把「新篇」改成你准备开发的页面名字。</li></ol><pre>npm ci
+npm run new:page -- our-story "新篇"
+npm start</pre><p>浏览器打开 <code>http://127.0.0.1:4173/pages/our-story/?mode=local</code>。主要修改 <code>pages/our-story/</code> 中的三个文件即可。</p><ol class="steps" start="4"><li>完成后运行 <code>npm test</code>，在 GitHub Desktop 提交并推送自己的分支，点 Create Pull Request，目标选择 <code>Yeewan-Yi/daojishi → main</code>。</li><li>对方审核合并后自动上线。新页面会出现在本页下方的目录中，再安排正式导航入口。</li></ol></section>
+<section class="rule-section"><h2>交给 AI 编辑器的开工说明</h2><p>把以下文字直接复制给你的 AI，再补充你想做的功能：</p><pre>请先阅读根目录 AGENTS.md、CONTRIBUTING.md 和 docs/subsite-design.md。
+我负责一个独立子网站，请先帮我创建 pages/our-story/，标题为「新篇」。
+复用 shared/subsite.css、shared/subsite.js 和现有字体图标，沿袭有期/拾光风格。
+优先只修改自己的页面目录；不要改主站、真实共享数据或数据库权限。
+使用 ?mode=local 做演示。需要跨设备同步或上传资料时，先用演示数据做好界面，
+并在合并请求说明数据结构和接口需求，由主项目统一接入。
+开发完成后运行 npm test，说明测试结果，再提交 Pull Request。</pre></section>
+<section class="rule-section"><h2>新页目录</h2><ul class="work-list" id="page-list"></ul><p class="quiet" id="page-list-status" role="status">正在翻阅目录……</p></section>
+<section class="rule-section"><h2>风格与衔接</h2><p>留白、细线、克制的蓝灰与暖白；汉字沿用秀楷，航行数字用 IBM Plex Mono，倒计时用 Libre Baskerville。每页都保留有期品牌、归航链接与明暗切换。普通选择尽量原位展开，避免加盖弹窗和卡片堆叠。手机单独适配，并尊重减少动态效果设置。</p><p class="quiet">此页是公开的开发说明。共享链接中的房间及个人凭证、照片和聊天内容不要放进代码、截图或合并请求。Fork 开发不需要这些资料。</p></section>
+</main><footer class="site-footer">有期 · 共筑手记</footer></div></body></html>

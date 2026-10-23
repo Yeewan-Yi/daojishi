@@ -2,6 +2,8 @@
 
 属于两个人的倒计时与回忆地图，支持浅色、深色、手机布局和共同传书。
 
+一起开发新子页面：先看 [协作说明](CONTRIBUTING.md)，或打开 [共筑协作入口](https://yeewan-yi.github.io/daojishi/collaborate.html)。模板支持一键生成、独立目录开发、主题衔接与 PR 自动检查。
+
 三维地球上的飞机从西雅图出发，沿反方向的较长大圆弧线抵达南京。位置按真实起止时间计算，100% 停在南京。上滑放大地球后，国界逐渐显现，共同去过的南京和绍兴亮起。点击国家可聚焦查看履痕；城市回忆使用现有双人传书保存，支持文字、图片和 emoji。
 
 国界数据来自 [Natural Earth 1:50m Admin 0 Countries](https://www.naturalearthdata.com/downloads/50m-cultural-vectors/50m-admin-0-countries-2/)，属于公有领域，已随网站部署，无需第三方地图请求。南京、绍兴使用 DataV GeoAtlas 的完整城市行政区多边形，以暖金色区域与细描边高亮，并随球面转动、缩放、遮挡；点击城市区域或名称可查看回忆。城市边界保存在 `visited-cities.geojson`，来源见 `THIRD_PARTY_NOTICES.md`。地图用于纪念与浏览。

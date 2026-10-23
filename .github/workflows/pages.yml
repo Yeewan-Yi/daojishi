@@ -25,6 +25,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Verify syntax and countdown behavior
         run: |
+          node scripts/check-subsites.mjs
           node --check app.js
           node --check countdown.js
           node --check cloud.js
@@ -54,6 +55,8 @@ jobs:
           cp letters.js letters-ui.js letters.css boot.js motion.js date-picker.js letter-media.js experience.css _site/
           cp country-index.json journey-navigation.js memories.html memories.css memories.js album-loader.js journey-data.js symbols.js _site/
           cp release-notes.js release-notes.css _site/
+          cp collaborate.html _site/
+          cp -r shared pages _site/
           cp -r map-data _site/
           mkdir _site/vendor
           cp vendor/three.module.js vendor/THREE-LICENSE vendor/FONT-LICENSES.txt vendor/FZSongKeBenXiuKaiS.woff2 _site/vendor/
