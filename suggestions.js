@@ -1,0 +1,20 @@
+import {CloudClient,validateRoom} from './cloud.js';
+import {validateIdentity} from './letters.js';
+export const STATES={open:'待议',review:'审议中',working:'修订中',done:'已修订',paused:'暂缓',declined:'暂不采纳',transferred:'已转交'};
+export const validSite=id=>typeof id==='string'&&/^(main|memories|page:[a-z][a-z0-9-]{1,39})$/.test(id);
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function targetSites(sites){if(!Array.isArray(sites)||!sites.length||sites.length>8||sites.some(s=>!validSite(s))||new Set(sites).size!==sites.length)throw Error('请选择 1—8 个归属网站。');return [...sites];}
+export function suggestionBody(value,max=2000){const text=String(value??'').replace(/\r\n?/g,'\n').trim();if(!text||[...text].length>max)throw Error(`请写下 1—${max} 字。`);return text;}
+export function validItem(item){if(!item||!UUID.test(item.id)||!UUID.test(item.author_id)||!STATES[item.status]||!validSite(item.origin_site)||typeof item.body!=='string'||!Number.isSafeInteger(item.seq)||!Number.isSafeInteger(item.version)||item.version<1||!Number.isFinite(Date.parse(item.created_at))||!Number.isFinite(Date.parse(item.updated_at)))throw Error('共议内容格式不完整，请重试。');suggestionBody(item.body);targetSites(item.targets);return item;}
+export function validPage(data){if(!data||!Array.isArray(data.items)||data.items.length>20||!Number.isSafeInteger(data.revision)||data.revision<0||data.cursor!==null&&(!Number.isSafeInteger(data.cursor)||data.cursor<1))throw Error('共议列表读取失败，请重试。');data.items.forEach(validItem);return data;}
+export function validThread(data){validItem(data?.item);if(!Array.isArray(data.events)||data.events.length>30||!Number.isSafeInteger(data.revision)||data.cursor!==null&&(!Number.isSafeInteger(data.cursor)||data.cursor<1))throw Error('讨论记录读取失败。');for(const e of data.events){if(!UUID.test(e.id)||!Number.isSafeInteger(e.seq)||typeof e.body!=='string'||!['reply','status','transfer'].includes(e.kind)||typeof e.name!=='string'||!Number.isFinite(Date.parse(e.created_at))||e.kind!=='reply'&&!STATES[e.new_status])throw Error('讨论记录格式无效。');if(e.new_targets)targetSites(e.new_targets);}return data;}
+export class SuggestionsClient{
+ constructor(context,cloud=new CloudClient()){this.context=context;this.cloud=cloud;}
+ async call(action,payload={}){const {room,person,localOnly}=this.context;if(localOnly)throw Error('当前是本机演示模式。');validateRoom(room);validateIdentity(person);try{return await this.cloud.rpc('youqi_suggestions',{p_id:room.id,p_token:room.token,p_action:action,p_payload:{...payload,...person}});}catch(e){const messages={CONFLICT:'对方刚更新了这条建议。已保留你的输入，请刷新讨论后再提交。',ACCESS:'请使用自己的双人专属链接打开共议。',SETUP:'共议尚未接入云端，请稍后重试。',VALIDATION:'请检查建议内容、归属和处理状态。',RATE:'今天写得有些多了，请稍后再试。'};if(messages[e.code])e.message=messages[e.code];throw e;}}
+ async list(site='main',status='all',before=null){if(!validSite(site)||status!=='all'&&!STATES[status])throw Error('筛选条件无效。');return validPage(await this.call('list',{site,status,before}));}
+ async thread(id,before=null){return validThread(await this.call('thread',{suggestion_id:id,before}));}
+ status(){return this.call('status');}
+ create({id,body,origin,targets}){if(!validSite(origin))throw Error('来源网站无效。');return this.call('create',{suggestion_id:id,body:suggestionBody(body),origin,targets:targetSites(targets)});}
+ reply(id,body,eventId){return this.call('reply',{suggestion_id:id,body:suggestionBody(body,1000),event_id:eventId});}
+ set(item,status,targets,body,eventId){if(!STATES[status])throw Error('处理状态无效。');return this.call('set',{suggestion_id:item.id,version:item.version,status,...(targets?{targets:targetSites(targets)}:{}),body:String(body||'').trim(),event_id:eventId});}
+}

@@ -1,0 +1,13 @@
+import {validPage,validThread,suggestionBody,targetSites,STATES} from './suggestions.js';
+const KEY='youqi.suggestions.demo.v1',author='10000000-0000-4000-8000-000000000001';
+export class LocalSuggestionsClient{
+ read(){const value=JSON.parse(localStorage.getItem(KEY)||'{"items":[],"events":[],"revision":0}');if(!Array.isArray(value.items)||!Array.isArray(value.events)||!Number.isSafeInteger(value.revision))throw Error('本机演示数据无效。');return value;}
+ save(value){localStorage.setItem(KEY,JSON.stringify(value));}
+ async status(){return {revision:this.read().revision};}
+ async list(site='main',status='all',before=null){const data=this.read(),rows=data.items.filter(i=>(site==='main'||i.targets.includes(site)||i.origin_site===site)&&(status==='all'||i.status===status)&&(!before||i.seq<before)).sort((a,b)=>b.seq-a.seq);return validPage({items:rows.slice(0,20).map(i=>({...i,replies:data.events.filter(e=>e.suggestion_id===i.id&&e.kind==='reply').length})),cursor:rows.length>20?rows[19].seq:null,revision:data.revision});}
+ async thread(id,before=null){const data=this.read(),item=data.items.find(i=>i.id===id),events=data.events.filter(e=>e.suggestion_id===id&&(!before||e.seq<before)).sort((a,b)=>b.seq-a.seq);return validThread({item,events:events.slice(0,30),cursor:events.length>30?events[29].seq:null,revision:data.revision});}
+ async create({id,body,origin,targets}){const d=this.read();if(d.items.some(i=>i.id===id))return {id};const now=new Date().toISOString();d.items.push({id,seq:++d.revision,author_id:author,name:'本机演示',body:suggestionBody(body),origin_site:origin,targets:targetSites(targets),status:'open',version:1,created_at:now,updated_at:now});this.save(d);return {id};}
+ async reply(id,body,eventId){return this.change(id,'reply',suggestionBody(body,1000),eventId);}
+ async set(item,status,targets,body,eventId){if(!STATES[status])throw Error('处理状态无效。');return this.change(item.id,targets||status==='transferred'?'transfer':'status',body,eventId,item.version,status,targets);}
+ change(id,kind,body,eventId,version,status,targets){const d=this.read(),i=d.items.find(x=>x.id===id);if(!i)throw Error('建议不存在。');if(d.events.some(e=>e.id===eventId))return {id};if(version&&i.version!==version)throw Error('这条建议已更新，请刷新后再试。');const now=new Date().toISOString();d.events.push({id:eventId,seq:++d.revision,suggestion_id:id,kind,body:body||'',name:'本机演示',created_at:now,old_status:i.status,new_status:status||null,old_targets:i.targets,new_targets:targets?targetSites(targets):i.targets});if(status){i.status=status;i.targets=targets?targetSites(targets):i.targets;i.version++;}i.updated_at=now;this.save(d);return {id};}
+}

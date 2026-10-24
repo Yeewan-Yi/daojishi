@@ -15,4 +15,6 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/check-subsites.mjs
+      - run: node scripts/verify-suggestions-db.mjs
+      - run: node --check suggestions-ui.js
       - run: npm test

@@ -26,6 +26,8 @@ jobs:
       - name: Verify syntax and countdown behavior
         run: |
           node scripts/check-subsites.mjs
+          node --check suggestions-ui.js
+          node scripts/verify-suggestions-db.mjs
           node --check app.js
           node --check countdown.js
           node --check cloud.js
@@ -56,6 +58,7 @@ jobs:
           cp country-index.json journey-navigation.js memories.html memories.css memories.js album-loader.js journey-data.js symbols.js _site/
           cp release-notes.js release-notes.css _site/
           cp collaborate.html _site/
+          cp suggestions.html suggestions.css suggestions.js suggestions-ui.js suggestions-local.js suggestions-link.js _site/
           cp -r shared pages _site/
           cp -r map-data _site/
           mkdir _site/vendor

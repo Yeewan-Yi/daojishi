@@ -1,5 +1,6 @@
 import {brandMark} from './symbols.js?v=20261023-covers';
-import {mountReleaseNotes} from './release-notes.js?v=20261024-city-switch';
+import {mountSuggestionLink} from './suggestions-link.js?v=20261025';
+import {mountReleaseNotes} from './release-notes.js?v=20261025-council';
 import {journeyLink} from './journey-data.js?v=20261023-albums';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
@@ -16,6 +17,7 @@ const $ = id => document.getElementById(id);
 const datePicker=mountDatePicker();
 bindModalMotion();
 mountReleaseNotes();
+mountSuggestionLink({host:document.querySelector('.header-actions'),site:'main'});
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
 const dateFormat = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 const timeFormat = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
