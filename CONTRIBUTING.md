@@ -4,6 +4,8 @@
 
 在线说明与模板预览：<https://yeewan-yi.github.io/daojishi/collaborate.html>
 
+发布约定：主项目交由 Codex 维护的功能，在检查通过后由 Codex 合并并直接上线、核实部署结果。协作者开发的新子页面仍按下述 Fork / PR 流程提交，由主项目审核后合并；无需自行部署正式站。
+
 ## 第一次开始（推荐 Fork，不必互相共享账号）
 
 1. 打开 <https://github.com/Yeewan-Yi/daojishi/fork>，登录自己的 GitHub 创建 Fork。上游是 `Yeewan-Yi/daojishi`，自己的副本位于自己的账号下。
