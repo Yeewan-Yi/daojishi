@@ -26,6 +26,27 @@ pages/registry.json     自动登记的子页面目录
 
 模板使用相对路径，在 GitHub Pages 的 `/daojishi/` 子目录也能工作。不要把资源写成 `/shared/...` 或 `/vendor/...`。新资源使用本地预览服务器允许的扩展名；需要额外路径时说明原因。
 
+## 共议：新页面自动获得建议入口
+
+新模板调用 `initSubsite({name:'页面名'})` 时，会自动向 `.site-nav` 加入「共议」图标。不必复制建议列表、数据库代码或自己造一套评论区。入口识别 `pages/<slug>/`，归属 ID 为 `page:<slug>`。页面依旧只需要维护自己的三个文件。
+
+`pages/registry.json` 决定主站里可选择的网站名称。生成器会登记它；PR 合并后，总站「共议」即可选择新页，且同一建议可以同时归属多个网站。未合并时请在自己 Fork 的本机预览验证，不要以为已经出现在正式站。
+
+若页面不使用公共导航，在页面初始化完成后调用：
+
+如果仍使用公共导航、只是路径比较特殊，可直接传 `initSubsite({name:'页面名',site:'page:our-story'})`，不必单独挂载。下例适用于自行实现导航的页面；若同时调用公共初始化，先设 `suggestions:false`，避免先生成一个默认入口。
+
+```js
+import {mountSuggestionLink} from '../../suggestions-link.js';
+mountSuggestionLink({host:document.querySelector('你的导航容器'),site:'page:our-story',shared:true});
+```
+
+`shared:true` 对应共享模板样式；主站和拾光沿用自己的导航样式。自定义目录需手工登记同一个 ID 对应的 slug；正式页面仍建议保持 `pages/<slug>/index.html` 结构。需要暂时隐藏模板入口可传 `initSubsite({name:'页面名',suggestions:false})`，只适用于不发布的视觉实验。
+
+主站入口进入总览，子网站入口默认只看本站。子网站提交的建议会自动带上本站归属；总览可选多个目标。转交改变当前目标，但原站仍能回看来源和转交流程。共议使用同一房间和双人专属身份，链接上下文会在站内保留；`?mode=local` 明确只作本机演示，不会发给对方。
+
+Fork 是代码协作方式，不自动共享身份。如果要把子网站放在完全不同的域名或仓库，先在 PR 约定统一入口和身份衔接，不要写死私人分享链接，也不要未经确认跨域传递个人凭证。
+
 主题存于 `youqi.theme`，与现有页面保持一致；站内返回保留分享上下文。本机草稿 key 需要页面独有前缀；不要用用户文字拼接 innerHTML，显示文字用 textContent。不要记录、转发或在截图中展示私人链接的 hash。
 
 ## 提交验收

@@ -57,6 +57,8 @@ export class CloudClient {
       });
       const data = await response.json();
       if (!response.ok) {
+        if (name === 'youqi_suggestions' && data.code === 'P4090') throw new CloudError('这条建议已更新，请确认最新进展后再提交。', 'CONFLICT');
+        if (name === 'youqi_suggestions' && data.code === 'P0001') throw new CloudError('今天写得有些多了，请稍后再试。输入已保留。', 'RATE');
         if (name === 'youqi_journey' && data.code === 'P0001') throw new CloudError('稍等片刻再试，输入内容已保留。', 'RATE');
         if (name === 'youqi_letters' && data.code === 'P0001') throw new CloudError('稍等三秒，再留下下一句话。草稿已保留。', 'RATE');
         if (data.code === 'PGRST202' || data.code === 'PGRST205') throw new CloudError('云端数据库尚未初始化，请先执行项目中的初始化 SQL。', 'SETUP');

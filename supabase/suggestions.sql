@@ -1,0 +1,111 @@
+-- Two-person suggestions. Additive schema; no existing countdown, letter or media is changed.
+begin;
+create table if not exists youqi_private.suggestion_books(
+ room_id uuid primary key references youqi_private.countdowns(id) on delete cascade,revision bigint not null default 0);
+create table if not exists youqi_private.suggestions(
+ id uuid primary key,seq bigint generated always as identity unique,room_id uuid not null references youqi_private.suggestion_books(room_id) on delete cascade,
+ author_id uuid not null,body text not null check(char_length(btrim(body)) between 1 and 2000),origin_site text not null,
+ targets text[] not null check(cardinality(targets) between 1 and 8),status text not null default 'open' check(status in ('open','review','working','done','paused','declined','transferred')),
+ version bigint not null default 1,created_at timestamptz not null default now(),updated_at timestamptz not null default now(),unique(room_id,id),
+ foreign key(room_id,author_id) references youqi_private.letter_people(room_id,id));
+create table if not exists youqi_private.suggestion_events(
+ id uuid primary key,seq bigint generated always as identity unique,room_id uuid not null,suggestion_id uuid not null,author_id uuid not null,
+ kind text not null check(kind in ('reply','status','transfer')),body text not null default '' check(char_length(body)<=1000),
+ old_status text,new_status text,old_targets text[],new_targets text[],created_at timestamptz not null default now(),
+ foreign key(room_id,suggestion_id) references youqi_private.suggestions(room_id,id) on delete cascade,
+ foreign key(room_id,author_id) references youqi_private.letter_people(room_id,id));
+create index if not exists suggestions_room_page on youqi_private.suggestions(room_id,seq desc);
+create index if not exists suggestions_author_day on youqi_private.suggestions(room_id,author_id,created_at desc);
+create index if not exists suggestion_events_page on youqi_private.suggestion_events(room_id,suggestion_id,seq desc);
+create index if not exists suggestion_events_author_day on youqi_private.suggestion_events(room_id,author_id,created_at desc);
+-- A countdown deletion cascades through both books and identities. Defer author
+-- checks until the transaction finishes so cascade trigger ordering is irrelevant.
+alter table youqi_private.suggestions alter constraint suggestions_room_id_author_id_fkey deferrable initially deferred;
+alter table youqi_private.suggestion_events alter constraint suggestion_events_room_id_author_id_fkey deferrable initially deferred;
+alter table youqi_private.suggestion_books enable row level security;
+alter table youqi_private.suggestions enable row level security;
+alter table youqi_private.suggestion_events enable row level security;
+revoke all on youqi_private.suggestion_books,youqi_private.suggestions,youqi_private.suggestion_events from public,anon,authenticated;
+revoke all on sequence youqi_private.suggestions_seq_seq,youqi_private.suggestion_events_seq_seq from public,anon,authenticated;
+create or replace function youqi_private.valid_suggestion_sites(sites text[]) returns boolean language sql immutable set search_path='' as $$
+ select coalesce(cardinality(sites) between 1 and 8 and not exists(select 1 from unnest(sites) s where s is null or s !~ '^(main|memories|page:[a-z][a-z0-9-]{1,39})$') and cardinality(sites)=(select count(distinct s) from unnest(sites) s),false);
+$$;
+revoke all on function youqi_private.valid_suggestion_sites(text[]) from public,anon,authenticated;
+create or replace function youqi_private.suggestions_rpc(p_id uuid,p_token text,p_action text,p_payload jsonb) returns jsonb language plpgsql security definer set search_path='' as $$
+declare who youqi_private.letter_people; item youqi_private.suggestions; event youqi_private.suggestion_events;
+ result jsonb; entries jsonb; page_cursor bigint; before_seq bigint; more boolean; target_sites text[]; site text; new_state text; content text; entry_id uuid; item_id uuid; rev bigint;
+begin
+ if coalesce(p_token,'')!~'^[0-9a-f]{64}$' or not exists(select 1 from youqi_private.countdowns c where c.id=p_id and (c.editor_hash=encode(extensions.digest(p_token,'sha256'),'hex') or c.viewer_token=p_token)) then raise exception 'No room access' using errcode='42501';end if;
+ if jsonb_typeof(p_payload) is distinct from 'object' or coalesce(p_payload->>'token','')!~'^[0-9a-f]{64}$' then raise exception 'Personal identity required' using errcode='42501';end if;
+ select * into who from youqi_private.letter_people lp where lp.room_id=p_id and lp.id=(p_payload->>'id')::uuid and lp.key_hash=encode(extensions.digest(p_payload->>'token','sha256'),'hex');
+ if not found then raise exception 'No personal access' using errcode='42501';end if;
+ select coalesce((select b.revision from youqi_private.suggestion_books b where b.room_id=p_id),0) into rev;
+ if p_action='status' then return jsonb_build_object('revision',rev);end if;
+ if p_action='list' then
+  site:=coalesce(p_payload->>'site','main');new_state:=coalesce(p_payload->>'status','all');before_seq:=(p_payload->>'before')::bigint;
+  if not youqi_private.valid_suggestion_sites(array[site]) or new_state not in ('all','open','review','working','done','paused','declined','transferred') or before_seq<1 then raise exception 'Invalid filter' using errcode='22023';end if;
+  select coalesce(jsonb_agg(to_jsonb(t) order by seq desc),'[]'::jsonb),min(seq) into entries,page_cursor from (
+   select s.*,lp.name,(select count(*) from youqi_private.suggestion_events e where e.room_id=p_id and e.suggestion_id=s.id and e.kind='reply') as replies from youqi_private.suggestions s join youqi_private.letter_people lp on lp.id=s.author_id
+   where s.room_id=p_id and (site='main' or site=any(s.targets) or site=s.origin_site) and (new_state='all' or s.status=new_state) and (before_seq is null or s.seq<before_seq) order by s.seq desc limit 20)t;
+  select exists(select 1 from youqi_private.suggestions s where s.room_id=p_id and (site='main' or site=any(s.targets) or site=s.origin_site) and (new_state='all' or s.status=new_state) and s.seq<page_cursor) into more;
+  return jsonb_build_object('items',entries,'cursor',case when more then page_cursor else null end,'revision',rev);
+ end if;
+ item_id:=(p_payload->>'suggestion_id')::uuid;
+ if p_action='create' then
+  content:=btrim(coalesce(p_payload->>'body',''));site:=p_payload->>'origin';
+  if jsonb_typeof(p_payload->'targets') is distinct from 'array' then raise exception 'Targets required' using errcode='22023';end if;
+  select array_agg(value) into target_sites from jsonb_array_elements_text(p_payload->'targets');
+  if item_id is null or char_length(content) not between 1 and 2000 or not youqi_private.valid_suggestion_sites(array[site]) or not youqi_private.valid_suggestion_sites(target_sites) or (site<>'main' and not site=any(target_sites)) then raise exception 'Invalid suggestion' using errcode='22023';end if;
+  -- Lock the room's book so limits, revisions and idempotent retries serialize.
+  insert into youqi_private.suggestion_books(room_id) values(p_id) on conflict do nothing;
+  perform 1 from youqi_private.suggestion_books b where b.room_id=p_id for update;
+  select * into item from youqi_private.suggestions s where s.id=item_id;
+  if found then if item.room_id<>p_id or item.author_id<>who.id or item.body<>content or item.targets<>target_sites or item.origin_site<>site then raise exception 'ID already used' using errcode='42501';end if;return jsonb_build_object('id',item.id);end if;
+  if (select count(*) from youqi_private.suggestions s where s.room_id=p_id)>=10000 or (select count(*) from youqi_private.suggestions s where s.room_id=p_id and s.author_id=who.id and s.created_at>now()-interval '1 day')>=60 then raise exception 'Suggestion limit reached' using errcode='P0001';end if;
+  insert into youqi_private.suggestions(id,room_id,author_id,body,origin_site,targets) values(item_id,p_id,who.id,content,site,target_sites);
+  update youqi_private.suggestion_books b set revision=b.revision+1 where b.room_id=p_id;
+  return jsonb_build_object('id',item_id);
+ end if;
+ select * into item from youqi_private.suggestions s where s.room_id=p_id and s.id=item_id;
+ if not found then raise exception 'No suggestion access' using errcode='42501';end if;
+ if p_action='thread' then
+  before_seq:=(p_payload->>'before')::bigint;
+  if before_seq<1 then raise exception 'Invalid cursor' using errcode='22023';end if;
+  select to_jsonb(s)||jsonb_build_object('name',lp.name) into result from youqi_private.suggestions s join youqi_private.letter_people lp on lp.id=s.author_id where s.id=item_id;
+  select coalesce(jsonb_agg(to_jsonb(t) order by seq desc),'[]'::jsonb),min(seq) into entries,page_cursor from (
+   select e.*,lp.name from youqi_private.suggestion_events e join youqi_private.letter_people lp on lp.id=e.author_id where e.room_id=p_id and e.suggestion_id=item_id and (before_seq is null or e.seq<before_seq) order by e.seq desc limit 30)t;
+  select exists(select 1 from youqi_private.suggestion_events e where e.room_id=p_id and e.suggestion_id=item_id and e.seq<page_cursor) into more;
+  return jsonb_build_object('item',result,'events',entries,'cursor',case when more then page_cursor else null end,'revision',rev);
+ end if;
+ if p_action not in ('reply','set') then raise exception 'Invalid action' using errcode='22023';end if;
+ entry_id:=(p_payload->>'event_id')::uuid;content:=btrim(coalesce(p_payload->>'body',''));
+ if entry_id is null or char_length(content)>1000 or (p_action='reply' and content='') then raise exception 'Invalid reply' using errcode='22023';end if;
+ perform 1 from youqi_private.suggestion_books b where b.room_id=p_id for update;
+ select * into event from youqi_private.suggestion_events e where e.id=entry_id;
+ if found then if event.room_id<>p_id or event.author_id<>who.id or event.suggestion_id<>item_id or event.body<>content or (p_action='reply' and event.kind<>'reply') or (p_action='set' and (event.kind='reply' or event.new_status is distinct from p_payload->>'status' or (p_payload ? 'targets' and to_jsonb(event.new_targets) is distinct from p_payload->'targets'))) then raise exception 'ID already used' using errcode='42501';end if;return jsonb_build_object('id',item_id);end if;
+ if (select count(*) from youqi_private.suggestion_events e where e.room_id=p_id and e.author_id=who.id and e.created_at>now()-interval '1 day')>=300 then raise exception 'Reply limit reached' using errcode='P0001';end if;
+ select * into item from youqi_private.suggestions s where s.id=item_id for update;
+ if p_action='reply' then
+  insert into youqi_private.suggestion_events(id,room_id,suggestion_id,author_id,kind,body) values(entry_id,p_id,item_id,who.id,'reply',content);
+ else
+  if (p_payload->>'version')::bigint is distinct from item.version then raise exception 'Suggestion changed' using errcode='P4090';end if;
+  new_state:=p_payload->>'status';
+  if new_state is null or new_state not in ('open','review','working','done','paused','declined','transferred') then raise exception 'Invalid status' using errcode='22023';end if;
+  target_sites:=item.targets;
+  if p_payload ? 'targets' then if jsonb_typeof(p_payload->'targets') is distinct from 'array' then raise exception 'Invalid targets' using errcode='22023';end if;select array_agg(value) into target_sites from jsonb_array_elements_text(p_payload->'targets');end if;
+  if not youqi_private.valid_suggestion_sites(target_sites) or (new_state='transferred' and not (p_payload ? 'targets')) then raise exception 'Transfer targets required' using errcode='22023';end if;
+  insert into youqi_private.suggestion_events(id,room_id,suggestion_id,author_id,kind,body,old_status,new_status,old_targets,new_targets) values(entry_id,p_id,item_id,who.id,case when target_sites<>item.targets or new_state='transferred' then 'transfer' else 'status' end,content,item.status,new_state,item.targets,target_sites);
+  update youqi_private.suggestions set status=new_state,targets=target_sites,version=version+1 where id=item_id;
+ end if;
+ update youqi_private.suggestions set updated_at=clock_timestamp() where id=item_id;
+ update youqi_private.suggestion_books b set revision=b.revision+1 where b.room_id=p_id;
+ return jsonb_build_object('id',item_id);
+end $$;
+revoke all on function youqi_private.suggestions_rpc(uuid,text,text,jsonb) from public;
+grant execute on function youqi_private.suggestions_rpc(uuid,text,text,jsonb) to anon,authenticated;
+create or replace function public.youqi_suggestions(p_id uuid,p_token text,p_action text,p_payload jsonb default '{}'::jsonb) returns jsonb language sql security invoker set search_path='' as $$select youqi_private.suggestions_rpc(p_id,p_token,p_action,p_payload);$$;
+revoke all on function public.youqi_suggestions(uuid,text,text,jsonb) from public;
+grant execute on function public.youqi_suggestions(uuid,text,text,jsonb) to anon,authenticated;
+grant usage on schema youqi_private to anon,authenticated;
+notify pgrst,'reload schema';
+commit;

@@ -35,6 +35,7 @@ Windows PowerShell 如果提示「无法加载 npm.ps1，因为禁止运行脚�
 ## 页面如何衔接
 
 - 共用 `shared/subsite.css`、`shared/subsite.js`，参考 `docs/subsite-design.md`。
+- 「共议」建议入口由 `initSubsite()` 自动加入导航；页面目录登记后即可在总览选择新页。无需重复开发评论功能，细节见设计规范的「共议」章节。
 - `initSubsite({name:'页面名'})` 初始化主题和品牌；`siteLink('memories.html')` 生成保留当前站内上下文的链接。不能用它生成外部链接。
 - 从主站接入时，主项目用现有 `journeyLink('pages/our-story/index.html')` 创建入口，维持共享房间上下文；不要手填别人的分享链接。
 - 房间上下文仅沿同站链接传递，不发送到外站。Fork 演示用本地模式；没有共享链接时不要假定有云端身份。
