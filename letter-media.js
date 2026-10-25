@@ -1,4 +1,4 @@
-import {openModal} from './motion.js?v=20261021-experience';
+import {openModal} from './motion.js?v=20261026-acceptance';
 
 export function validImages(images=[]){
   if(!Array.isArray(images)||images.length>3||images.some(i=>!i||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(i.id)||!Number.isInteger(i.width)||!Number.isInteger(i.height)||i.width<1||i.width>1800||i.height<1||i.height>1800)||new Set(images.map(i=>i.id)).size!==images.length)throw new Error('图片内容无效。');
@@ -6,7 +6,7 @@ export function validImages(images=[]){
 }
 export async function prepareImage(file){
   if(!/^image\/(jpeg|png|webp|gif|avif)$/.test(file.type)||file.size>15000000)throw new Error('请选择 15 MB 以内的 JPG、PNG、WebP 或 GIF 图片。');
-  const bitmap=await createImageBitmap(file);
+  let bitmap;try{bitmap=await createImageBitmap(file);}catch{throw new Error('这张照片无法读取，可能已损坏或格式不受支持，请换一张重试。');}
   try{
     const scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));
     const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));

@@ -1,17 +1,17 @@
 import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-council-compact';
 import {brandMark} from './symbols.js?v=20261023-covers';
 import {mountSuggestionLink} from './suggestions-link.js?v=20261025-council-compact';
-import {mountReleaseNotes} from './release-notes.js?v=20261025-council-compact';
-import {journeyLink} from './journey-data.js?v=20261023-albums';
+import {mountReleaseNotes} from './release-notes.js?v=20261026-acceptance';
+import {journeyLink} from './journey-data.js?v=20261026-acceptance';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
 import { mountFlight, flightStage } from './flight.js?v=20261023-covers';
 import { mountFlipClock } from './flip-clock.js';
 import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261023-covers';
-import { mountLetters } from './letters-ui.js?v=20261023-covers';
+import { mountLetters } from './letters-ui.js?v=20261026-acceptance';
 import {startBoot} from './boot.js?v=20261021-experience';
-import {openModal,closeModal,bindModalMotion} from './motion.js?v=20261021-experience';
-import {mountDatePicker} from './date-picker.js?v=20261021-experience';
+import {openModal,closeModal,bindModalMotion,lockModal} from './motion.js?v=20261026-acceptance';
+import {mountDatePicker} from './date-picker.js?v=20261026-acceptance';
 const boot=startBoot();boot.advance(.22);
 
 const $ = id => document.getElementById(id);
@@ -292,17 +292,18 @@ $('edit-form').addEventListener('submit', async event => {
     writingCloud = true;
     cloudStatus = 'saving'; setSaveLabel();
     const submit = $('edit-form').querySelector('[type=submit]');
-    submit.disabled = true;
+    const releaseEdit = lockModal($('edit-dialog'));
     try {
       applyCloudRecord(await cloud.update(room, next, editingVersion));
       cloudStatus = 'synced'; cloudFailures = 0;
+      releaseEdit();
       closeModal($('edit-dialog'));
       toast('已保存到云端，对方将自动收到更新。');
     } catch (error) {
       $('form-error').textContent = error.message;
       cloudStatus = error.code === 'ACCESS' ? 'denied' : error.code === 'SETUP' ? 'setup' : 'offline';
     } finally {
-      writingCloud = false; submit.disabled = false; setSaveLabel(); refreshCloud();
+      releaseEdit();writingCloud = false; submit.disabled = false; setSaveLabel(); refreshCloud();
     }
     return;
   }
