@@ -37,3 +37,11 @@ test('failed signing requests are not cached and can be retried',async()=>{
  client.media=async(action,payload)=>{if(++calls===1)throw Error('temporary failure');return {items:payload.requests.map(row=>({...row,url:'https://example.com/storage/v1/object/sign/youqi-journey/photo'}))};};
  await assert.rejects(client.urls('photo'));await client.urls('photo');assert.equal(calls,2);assert.equal(client.urlPending.size,0);
 });
+
+test('local preview consumers also share an in-flight object URL read',async()=>{
+ const client=new JourneyClient({localOnly:true});let calls=0,finish;
+ client.readUrl=()=>{calls++;return new Promise(resolve=>{finish=resolve;});};
+ const first=client.urls('local-photo',true),second=client.urls('local-photo',true);
+ assert.equal(calls,1);finish({url:'blob:synthetic-local-photo',local:true});
+ assert.deepEqual(await first,await second);assert.equal(client.urlPending.size,0);
+});

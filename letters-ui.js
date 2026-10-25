@@ -1,5 +1,5 @@
 import { LettersClient, createPair, identityFromHash, personalUrl, validateIdentity } from './letters.js?v=20261021-experience';
-import {mountLetterMedia} from './letter-media.js?v=20261021-experience';
+import {mountLetterMedia} from './letter-media.js?v=20261026-acceptance';
 
 export function mountLetters({getContext,openSharing,notify,client=new LettersClient()}) {
   const $=id=>document.getElementById(id), dock=$('letters-dock'), panel=$('letters-panel'), trigger=$('letters-trigger');

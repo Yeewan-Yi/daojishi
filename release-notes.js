@@ -1,4 +1,4 @@
-import {openModal,closeModal} from './motion.js';
+import {openModal,closeModal} from './motion.js?v=20261026-acceptance';
 
 // Keep this list limited to changes included in the deployed site.
 export const releases=[

@@ -1,9 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {shiftDate,monthCells} from '../date-picker.js';
-import {validImages} from '../letter-media.js';
+import {validImages,prepareImage} from '../letter-media.js';
 import {validateBody,parsePage,LettersClient,createPair} from '../letters.js';
 import {CloudClient,newRoom} from '../cloud.js';
+
+test('corrupt images show a readable retry error before canvas processing',async t=>{
+ const old=Object.getOwnPropertyDescriptor(globalThis,'createImageBitmap');
+ Object.defineProperty(globalThis,'createImageBitmap',{configurable:true,value:async()=>{throw Error('The source image could not be decoded');}});
+ t.after(()=>old?Object.defineProperty(globalThis,'createImageBitmap',old):delete globalThis.createImageBitmap);
+ await assert.rejects(prepareImage({type:'image/png',size:20}),/这张照片无法读取.*换一张重试/);
+});
 
 test('month and year changes clamp the day across leap years and short months',()=>{
   const jan=new Date(2028,0,31,18,30),feb=shiftDate(jan,'month',1);

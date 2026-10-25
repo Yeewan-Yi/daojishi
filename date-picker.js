@@ -1,5 +1,5 @@
 import {toLocalInput} from './countdown.js?v=20261021-clear';
-import {openModal,closeModal} from './motion.js?v=20261021-experience';
+import {openModal,closeModal} from './motion.js?v=20261026-acceptance';
 const daysInMonth=(year,month)=>{const date=new Date(0);date.setFullYear(year,month+1,0);return date.getDate();};
 
 export function shiftDate(date,unit,amount){
