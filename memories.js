@@ -1,10 +1,10 @@
 import {journeyTree,cityChoices} from './journey-navigation.js?v=20261024-city-switch';
-import {mountSuggestionLink} from './suggestions-link.js?v=20261025';
+import {mountSuggestionLink} from './suggestions-link.js?v=20261025-inline';
 import {createAlbumLoader,dismissAlbumLoader} from './album-loader.js?v=20261023-photos';
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261023-albums';
 import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion} from './motion.js';
-import {mountReleaseNotes} from './release-notes.js?v=20261025-council';
+import {mountReleaseNotes} from './release-notes.js?v=20261025-inline';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 mountReleaseNotes();
 mountSuggestionLink({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),site:'memories'});

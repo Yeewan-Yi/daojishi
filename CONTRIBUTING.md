@@ -52,3 +52,11 @@ Windows PowerShell 如果提示「无法加载 npm.ps1，因为禁止运行脚�
 无需提供自己的密码或 API Key；不懂 Git 命令也可以使用 GitHub Desktop 完成上述流程。
 
 流程参考 GitHub 官方：[Fork 与 Pull Request](https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project)、[GitHub Desktop 克隆与 Fork](https://docs.github.com/en/desktop/adding-and-cloning-repositories/cloning-and-forking-repositories-from-github-desktop)。
+
+## 页内共议与输入标记
+
+共议在当前页面右侧展开，不再单开子页面。`initSubsite()` / `mountSuggestionLink()` 的接入方式保持兼容，新页面自动获得侧栏。关闭后保留建议和回复草稿；原共议网址会回到对应页面并展开侧栏。
+
+输入开头的 `【拾光】建议正文` 会自动识别归属；`【有期】【拾光】建议正文` 指定多个网站。名称取自注册目录，也可用 `【page:our-story】` 或 `【our-story】`，总站别名为 `【总站】`。只有开头的标记会被解析，正文中的括号保持原样。未知或重名标记会提示更正，避免误投。子网站的原始归属始终保留，其他标记可增加目标。
+
+本机预览：`index.html?mode=local&council=1`。模板开发仍用本机演示，不需额外数据库或凭证。

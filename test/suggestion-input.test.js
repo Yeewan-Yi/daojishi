@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {parseSuggestionInput as parse} from '../suggestion-input.js';
+const sites=[{id:'main',title:'有期'},{id:'memories',title:'拾光'},{id:'page:our-story',title:'新篇'}];
+test('leading targets are extracted and deduplicated without changing interior brackets',()=>{assert.deepEqual(parse('  【有期】【拾光】【拾光】 保留【原文】',sites),{body:'保留【原文】',targets:['main','memories'],explicit:true,error:''});});
+test('plain input uses selected targets',()=>{assert.deepEqual(parse('改善切换',sites,{selected:['memories']}),{body:'改善切换',targets:['memories'],explicit:false,error:''});});
+test('subsite retains origin when targeting other sites',()=>{assert.deepEqual(parse('【有期】改一下',sites,{origin:'memories'}).targets,['memories','main']);});
+test('registered slugs, IDs and overview aliases work',()=>{for(const name of ['our-story','page:our-story','新篇'])assert.deepEqual(parse(`【${name}】正文`,sites).targets,['page:our-story']);assert.deepEqual(parse('【总站】正文',sites).targets,['main']);});
+test('unknown, incomplete, ambiguous and excess targets are rejected',()=>{for(const input of ['【不存在】正文','【拾光'])assert.ok(parse(input,sites).error);assert.ok(parse('【新篇】正文',[...sites,{id:'page:another',title:'新篇'}]).error);const many=Array.from({length:9},(_,i)=>({id:`page:site-${i}`,title:`页面${i}`}));assert.ok(parse(many.map(s=>`【${s.title}】`).join('')+'正文',many).error);});
+test('only prefixes are parsed and tag-only input has no body',()=>{assert.equal(parse('正文【拾光】',sites).body,'正文【拾光】');assert.equal(parse('【拾光】',sites).body,'');});

@@ -1,4 +1,4 @@
-import {initSubsite,siteLink} from './subsite.js?v=20261025-council';
+import {initSubsite,siteLink} from './subsite.js?v=20261025-inline';
 initSubsite({name:'共筑'});
 const status=document.querySelector('#page-list-status');
 try{const response=await fetch(new URL('../pages/registry.json',import.meta.url));if(!response.ok)throw Error();const rows=await response.json();if(!Array.isArray(rows))throw Error();for(const row of rows){if(!/^[a-z][a-z0-9-]{1,39}$/.test(row.slug)||typeof row.title!=='string')continue;const item=document.createElement('li'),link=document.createElement('a'),small=document.createElement('small');link.textContent=row.title+' ↗';link.href=siteLink('pages/'+row.slug+'/index.html');small.textContent='独立篇章';item.append(link,small);document.querySelector('#page-list').append(item);}status.textContent=rows.length?'':'新篇还在书写。完成并合并后，会自动出现在这里。';}catch{status.textContent='目录暂时未能读取，请稍后刷新。';}
