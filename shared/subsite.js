@@ -1,6 +1,6 @@
-import {mountMobileTools} from './mobile-tools.js?v=20261025-council-v3';
+import {mountMobileTools} from './mobile-tools.js?v=20261025-council-compact';
 import {brandMark} from '../symbols.js';
-import {mountSuggestionLink} from '../suggestions-link.js?v=20261025-council-v3';
+import {mountSuggestionLink} from '../suggestions-link.js?v=20261025-council-compact';
 const root=new URL('../',import.meta.url);
 /** Only same-site navigation receives the existing private fragment. Never send it to external links. */
 export function siteLink(path='index.html'){
