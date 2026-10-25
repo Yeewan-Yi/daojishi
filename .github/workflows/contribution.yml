@@ -17,6 +17,7 @@ jobs:
       - run: node scripts/check-subsites.mjs
       - run: node scripts/verify-suggestions-db.mjs
       - run: node --check suggestions-ui.js
+      - run: node --check suggestions-alerts.js
       - run: node --check suggestions-link.js
       - run: node --check suggestions-legacy.js
       - run: npm test
