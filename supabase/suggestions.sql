@@ -17,6 +17,7 @@ create table if not exists youqi_private.suggestion_events(
 create index if not exists suggestions_room_page on youqi_private.suggestions(room_id,seq desc);
 create index if not exists suggestions_author_day on youqi_private.suggestions(room_id,author_id,created_at desc);
 create index if not exists suggestion_events_page on youqi_private.suggestion_events(room_id,suggestion_id,seq desc);
+create index if not exists suggestion_reply_updates on youqi_private.suggestion_events(room_id,seq) where kind='reply';
 create index if not exists suggestion_events_author_day on youqi_private.suggestion_events(room_id,author_id,created_at desc);
 -- A countdown deletion cascades through both books and identities. Defer author
 -- checks until the transaction finishes so cascade trigger ordering is irrelevant.
@@ -33,7 +34,7 @@ $$;
 revoke all on function youqi_private.valid_suggestion_sites(text[]) from public,anon,authenticated;
 create or replace function youqi_private.suggestions_rpc(p_id uuid,p_token text,p_action text,p_payload jsonb) returns jsonb language plpgsql security definer set search_path='' as $$
 declare who youqi_private.letter_people; item youqi_private.suggestions; event youqi_private.suggestion_events;
- result jsonb; entries jsonb; page_cursor bigint; before_seq bigint; more boolean; target_sites text[]; site text; new_state text; content text; entry_id uuid; item_id uuid; rev bigint;
+ result jsonb; entries jsonb; page_cursor bigint; before_seq bigint; more boolean; target_sites text[]; site text; new_state text; content text; entry_id uuid; item_id uuid; rev bigint; filter_sites text[]; filter_states text[]; after_seq bigint;
 begin
  if coalesce(p_token,'')!~'^[0-9a-f]{64}$' or not exists(select 1 from youqi_private.countdowns c where c.id=p_id and (c.editor_hash=encode(extensions.digest(p_token,'sha256'),'hex') or c.viewer_token=p_token)) then raise exception 'No room access' using errcode='42501';end if;
  if jsonb_typeof(p_payload) is distinct from 'object' or coalesce(p_payload->>'token','')!~'^[0-9a-f]{64}$' then raise exception 'Personal identity required' using errcode='42501';end if;
@@ -41,13 +42,32 @@ begin
  if not found then raise exception 'No personal access' using errcode='42501';end if;
  select coalesce((select b.revision from youqi_private.suggestion_books b where b.room_id=p_id),0) into rev;
  if p_action='status' then return jsonb_build_object('revision',rev);end if;
+ if p_action='activity' then
+  after_seq:=(p_payload->>'after')::bigint;
+  if after_seq is null then
+   select coalesce(max(e.seq),0) into after_seq from youqi_private.suggestion_events e where e.room_id=p_id and e.kind='reply' and e.author_id<>who.id;
+   return jsonb_build_object('items','[]'::jsonb,'cursor',after_seq,'more',false,'revision',rev);
+  end if;
+  if after_seq<0 then raise exception 'Invalid update cursor' using errcode='22023';end if;
+  select coalesce(jsonb_agg(to_jsonb(t) order by seq),'[]'::jsonb),coalesce(max(seq),after_seq) into entries,page_cursor from (
+   select e.seq,e.suggestion_id,e.created_at,lp.name from youqi_private.suggestion_events e join youqi_private.letter_people lp on lp.id=e.author_id and lp.room_id=e.room_id
+   where e.room_id=p_id and e.kind='reply' and e.author_id<>who.id and e.seq>after_seq order by e.seq limit 50)t;
+  select exists(select 1 from youqi_private.suggestion_events e where e.room_id=p_id and e.kind='reply' and e.author_id<>who.id and e.seq>page_cursor) into more;
+  return jsonb_build_object('items',entries,'cursor',page_cursor,'more',more,'revision',rev);
+ end if;
  if p_action='list' then
   site:=coalesce(p_payload->>'site','main');new_state:=coalesce(p_payload->>'status','all');before_seq:=(p_payload->>'before')::bigint;
   if not youqi_private.valid_suggestion_sites(array[site]) or new_state not in ('all','open','review','working','done','paused','declined','transferred') or before_seq<1 then raise exception 'Invalid filter' using errcode='22023';end if;
+  if p_payload ? 'sites' or p_payload ? 'statuses' then
+   if jsonb_typeof(p_payload->'sites') is distinct from 'array' or jsonb_typeof(p_payload->'statuses') is distinct from 'array' then raise exception 'Invalid multi filter' using errcode='22023';end if;
+   select coalesce(array_agg(value),array[]::text[]) into filter_sites from jsonb_array_elements_text(p_payload->'sites');
+   select coalesce(array_agg(value),array[]::text[]) into filter_states from jsonb_array_elements_text(p_payload->'statuses');
+   if cardinality(filter_sites)>64 or cardinality(filter_states)>7 or exists(select 1 from unnest(filter_sites) x where x is null or x !~ '^(main|memories|page:[a-z][a-z0-9-]{1,39})$') or exists(select 1 from unnest(filter_states) x where x is null or x not in ('open','review','working','done','paused','declined','transferred')) then raise exception 'Invalid multi filter' using errcode='22023';end if;
+  end if;
   select coalesce(jsonb_agg(to_jsonb(t) order by seq desc),'[]'::jsonb),min(seq) into entries,page_cursor from (
    select s.*,lp.name,(select count(*) from youqi_private.suggestion_events e where e.room_id=p_id and e.suggestion_id=s.id and e.kind='reply') as replies from youqi_private.suggestions s join youqi_private.letter_people lp on lp.id=s.author_id
-   where s.room_id=p_id and (site='main' or site=any(s.targets) or site=s.origin_site) and (new_state='all' or s.status=new_state) and (before_seq is null or s.seq<before_seq) order by s.seq desc limit 20)t;
-  select exists(select 1 from youqi_private.suggestions s where s.room_id=p_id and (site='main' or site=any(s.targets) or site=s.origin_site) and (new_state='all' or s.status=new_state) and s.seq<page_cursor) into more;
+   where s.room_id=p_id and ((filter_sites is null and (site='main' or site=any(s.targets) or site=s.origin_site)) or (filter_sites is not null and (cardinality(filter_sites)=0 or s.targets && filter_sites or (s.origin_site<>'main' and s.origin_site=any(filter_sites))))) and ((filter_states is null and (new_state='all' or s.status=new_state)) or (filter_states is not null and (cardinality(filter_states)=0 or s.status=any(filter_states)))) and (before_seq is null or s.seq<before_seq) order by s.seq desc limit 20)t;
+  select exists(select 1 from youqi_private.suggestions s where s.room_id=p_id and ((filter_sites is null and (site='main' or site=any(s.targets) or site=s.origin_site)) or (filter_sites is not null and (cardinality(filter_sites)=0 or s.targets && filter_sites or (s.origin_site<>'main' and s.origin_site=any(filter_sites))))) and ((filter_states is null and (new_state='all' or s.status=new_state)) or (filter_states is not null and (cardinality(filter_states)=0 or s.status=any(filter_states)))) and s.seq<page_cursor) into more;
   return jsonb_build_object('items',entries,'cursor',case when more then page_cursor else null end,'revision',rev);
  end if;
  item_id:=(p_payload->>'suggestion_id')::uuid;

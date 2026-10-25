@@ -1,7 +1,7 @@
-import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-mobile-nav';
+import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-council-v3';
 import {brandMark} from './symbols.js?v=20261023-covers';
-import {mountSuggestionLink} from './suggestions-link.js?v=20261025-inline';
-import {mountReleaseNotes} from './release-notes.js?v=20261025-inline';
+import {mountSuggestionLink} from './suggestions-link.js?v=20261025-council-v3';
+import {mountReleaseNotes} from './release-notes.js?v=20261025-council-v3';
 import {journeyLink} from './journey-data.js?v=20261023-albums';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
