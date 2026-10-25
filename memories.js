@@ -1,11 +1,11 @@
-import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-council-v3';
+import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-council-compact';
 import {journeyTree,cityChoices} from './journey-navigation.js?v=20261024-city-switch';
-import {mountSuggestionLink} from './suggestions-link.js?v=20261025-council-v3';
+import {mountSuggestionLink} from './suggestions-link.js?v=20261025-council-compact';
 import {createAlbumLoader,dismissAlbumLoader} from './album-loader.js?v=20261023-photos';
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261023-albums';
 import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion} from './motion.js';
-import {mountReleaseNotes} from './release-notes.js?v=20261025-council-v3';
+import {mountReleaseNotes} from './release-notes.js?v=20261025-council-compact';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 const atmosphere=document.querySelector('.memory-atmosphere');
 function pauseAtmosphere(){atmosphere?.classList.toggle('is-paused',document.hidden);}
