@@ -1,0 +1,22 @@
+/* Slow liquid light: only transforms move; photos and foreground controls stay still. */
+body{isolation:isolate;animation:none;background:#edf3f4;background-size:auto;transition:background-color .85s ease,color .65s ease}
+html[data-theme=dark] body{background:#080f1b}
+.memory-atmosphere{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;contain:strict}
+.memory-fluid{position:absolute;inset:0;overflow:hidden;opacity:1;transition:opacity 1s ease}
+.memory-fluid--night{opacity:0}
+.memory-fluid i{position:absolute;display:block;width:130%;height:130%;left:-15%;top:-15%;filter:blur(45px);transform-origin:50% 50%;animation:memory-current-a 28s cubic-bezier(.45,0,.55,1) infinite alternate;will-change:transform;backface-visibility:hidden}
+.memory-fluid i:nth-child(1){background:radial-gradient(ellipse at 72% 24%,#a5cfdc 0,transparent 48%),conic-gradient(from 25deg at 62% 42%,transparent 5%,#c6dce8 20%,#edf2ef 35%,transparent 53%,#afd1dd 73%,transparent 94%);opacity:.82}
+.memory-fluid i:nth-child(2){background:radial-gradient(ellipse at 24% 65%,#d6dfed 0,transparent 43%),conic-gradient(from 160deg at 42% 60%,transparent 4%,#b7dbe2 20%,transparent 42%,#f4e7cf 63%,transparent 86%);mix-blend-mode:multiply;opacity:.65;animation-name:memory-current-b;animation-duration:34s;animation-delay:-12s}
+.memory-fluid i:nth-child(3){background:radial-gradient(ellipse at 62% 65%,#fffaf0 0,transparent 38%),conic-gradient(from 250deg at 65% 56%,transparent 8%,#fffaf2 25%,transparent 46%,#d5e8ec 72%,transparent 94%);opacity:.75;animation-name:memory-current-c;animation-duration:39s;animation-delay:-20s}
+.memory-fluid--night i{animation-play-state:paused;will-change:auto}
+.memory-fluid--night i:nth-child(1){background:radial-gradient(ellipse at 75% 22%,#254b64 0,transparent 48%),conic-gradient(from 25deg at 62% 42%,transparent 5%,#173346 20%,#0c1724 35%,transparent 53%,#214957 73%,transparent 94%);opacity:.7}
+.memory-fluid--night i:nth-child(2){background:radial-gradient(ellipse at 24% 65%,#202e48 0,transparent 43%),conic-gradient(from 160deg at 42% 60%,transparent 4%,#193d4b 20%,transparent 42%,#514539 63%,transparent 86%);mix-blend-mode:screen;opacity:.25}
+.memory-fluid--night i:nth-child(3){background:radial-gradient(ellipse at 62% 65%,#3b4652 0,transparent 38%),conic-gradient(from 250deg at 65% 56%,transparent 8%,#353e4c 25%,transparent 46%,#173242 72%,transparent 94%);opacity:.24}
+.memory-atmosphere::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 42% 45%,#f6f8f329,transparent 72%);transition:opacity 1s;pointer-events:none}
+html[data-theme=dark] .memory-fluid--day{opacity:0}html[data-theme=dark] .memory-fluid--day i{animation-play-state:paused;will-change:auto}html[data-theme=dark] .memory-fluid--night{opacity:.7}html[data-theme=dark] .memory-fluid--night i{animation-play-state:running;will-change:transform}html[data-theme=dark] .memory-atmosphere::after{opacity:0}
+.memory-atmosphere.is-paused .memory-fluid i{animation-play-state:paused}
+@keyframes memory-current-a{0%{transform:translate(-7%,-5%) rotate(-14deg) scale(1.08,1.06) skew(-7deg,2deg)}50%{transform:translate(4%,5%) rotate(8deg) scale(1.14,.98) skew(6deg,-4deg)}100%{transform:translate(-2%,8%) rotate(24deg) scale(.99,1.16) skew(-3deg,5deg)}}
+@keyframes memory-current-b{0%{transform:translate(9%,7%) rotate(21deg) scale(1.1,.94) skew(6deg,-5deg)}55%{transform:translate(-8%,-3%) rotate(-10deg) scale(.98,1.19) skew(-6deg,4deg)}100%{transform:translate(3%,-8%) rotate(-28deg) scale(1.16,1.05) skew(8deg,2deg)}}
+@keyframes memory-current-c{0%{transform:translate(-4%,9%) rotate(-17deg) scale(1.04,1.15) skew(-3deg,5deg)}45%{transform:translate(8%,-6%) rotate(13deg) scale(1.14,.96) skew(5deg,-3deg)}100%{transform:translate(-9%,1%) rotate(32deg) scale(1.02,1.12) skew(-6deg,3deg)}}
+@media(max-width:680px){.memory-fluid i{filter:blur(30px);width:145%;left:-22.5%;opacity:.75}.memory-fluid--night i:nth-child(1){opacity:.6}.memory-fluid--night i:nth-child(2),.memory-fluid--night i:nth-child(3){opacity:.22}}
+@media(prefers-reduced-motion:reduce){.memory-fluid,.memory-atmosphere::after{transition:none}.memory-fluid i{animation:none!important;will-change:auto!important;transform:rotate(-8deg) scale(1.08)}.memory-fluid i:nth-child(2){transform:rotate(18deg)}.memory-fluid i:nth-child(3){transform:rotate(-20deg)}}

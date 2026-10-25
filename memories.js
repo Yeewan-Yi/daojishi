@@ -7,6 +7,9 @@ import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion} from './motion.js';
 import {mountReleaseNotes} from './release-notes.js?v=20261025-council-v3';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
+const atmosphere=document.querySelector('.memory-atmosphere');
+function pauseAtmosphere(){atmosphere?.classList.toggle('is-paused',document.hidden);}
+document.addEventListener('visibilitychange',pauseAtmosphere);pauseAtmosphere();
 mountReleaseNotes();
 mountSuggestionLink({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),site:'memories'});
 mountMobileTools({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),primary:'#home-link'});
