@@ -1,6 +1,6 @@
 import {brandMark} from './symbols.js?v=20261023-covers';
-import {mountSuggestionLink} from './suggestions-link.js?v=20261025';
-import {mountReleaseNotes} from './release-notes.js?v=20261025-council';
+import {mountSuggestionLink} from './suggestions-link.js?v=20261025-inline';
+import {mountReleaseNotes} from './release-notes.js?v=20261025-inline';
 import {journeyLink} from './journey-data.js?v=20261023-albums';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
@@ -442,7 +442,7 @@ function installScrollScene() {
     if (performance.now() - previousPaint > 100) previousPaint = performance.now() - 16;
     frame = requestAnimationFrame(paint);
   }
-  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select,.letters-dock,.memory-atlas,.atlas-trigger');
+  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select,.letters-dock,.memory-atlas,.atlas-trigger,[data-council-panel]');
   function advanceView(delta, scrollScale = 1) {
     if(document.body.classList.contains('atlas-open')&&zoomTarget>=.999){
       delta=globe3d?.zoomDetail(delta)??delta;

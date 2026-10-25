@@ -8,7 +8,7 @@ for (const file of ['/release-notes.js','/release-notes.css','/memory-map.js','/
 const port = Number(process.argv[2] || 4173);
 allowed.add('/detail-land.geojson');
 allowed.add('/collaborate.html');
-for(const file of ['/suggestions.html','/suggestions.css','/suggestions.js','/suggestions-ui.js','/suggestions-local.js','/suggestions-link.js'])allowed.add(file);
+for(const file of ['/suggestions.html','/suggestions.css','/suggestions.js','/suggestions-ui.js','/suggestions-local.js','/suggestions-link.js','/suggestion-input.js','/suggestions-view.js','/suggestions-legacy.js'])allowed.add(file);
 http.createServer(async (req, res) => {
   try {
     const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
