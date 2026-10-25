@@ -1,3 +1,4 @@
+import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-mobile-nav';
 import {brandMark} from './symbols.js?v=20261023-covers';
 import {mountSuggestionLink} from './suggestions-link.js?v=20261025-inline';
 import {mountReleaseNotes} from './release-notes.js?v=20261025-inline';
@@ -18,6 +19,7 @@ const datePicker=mountDatePicker();
 bindModalMotion();
 mountReleaseNotes();
 mountSuggestionLink({host:document.querySelector('.header-actions'),site:'main'});
+mountMobileTools({host:document.querySelector('.header-actions'),primary:'#edit-button'});
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
 const dateFormat = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 const timeFormat = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });

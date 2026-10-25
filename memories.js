@@ -1,3 +1,4 @@
+import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-mobile-nav';
 import {journeyTree,cityChoices} from './journey-navigation.js?v=20261024-city-switch';
 import {mountSuggestionLink} from './suggestions-link.js?v=20261025-inline';
 import {createAlbumLoader,dismissAlbumLoader} from './album-loader.js?v=20261023-photos';
@@ -8,6 +9,7 @@ import {mountReleaseNotes} from './release-notes.js?v=20261025-inline';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 mountReleaseNotes();
 mountSuggestionLink({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),site:'memories'});
+mountMobileTools({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),primary:'#home-link'});
 $('brand-emblem').innerHTML=brandMark;$('trail-emblem').innerHTML=trailMark;
 for(const id of ['home-brand','home-link','map-link'])$(id).href=journeyLink('./',null,ctx);
 let theme;try{theme=localStorage.getItem('youqi.theme');}catch{}theme||=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';

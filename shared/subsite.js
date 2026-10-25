@@ -1,3 +1,4 @@
+import {mountMobileTools} from './mobile-tools.js?v=20261025-mobile-nav';
 import {brandMark} from '../symbols.js';
 import {mountSuggestionLink} from '../suggestions-link.js?v=20261025-inline';
 const root=new URL('../',import.meta.url);
@@ -18,5 +19,6 @@ export function initSubsite({name='新篇',active='',site,suggestions=true}={}){
  document.querySelector('[data-theme-toggle]')?.addEventListener('click',()=>{const value=document.documentElement.dataset.theme==='dark'?'light':'dark';apply(value);try{localStorage.setItem('youqi.theme',value);}catch{}});
  addEventListener('storage',e=>{if(e.key==='youqi.theme')apply(e.newValue);});
  if(suggestions&&!location.pathname.endsWith('/suggestions.html'))mountSuggestionLink({host:document.querySelector('.site-nav'),site,siteTitle:name,shared:true});
+ mountMobileTools({host:document.querySelector('.site-nav'),primary:'[data-theme-toggle]'});
  return {siteLink};
 }
