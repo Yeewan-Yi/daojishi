@@ -167,9 +167,10 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite,onDetailZ
       coastMaterial.color.set('#6f8668').lerp(new THREE.Color('#879b7d'),themeMix);coastMaterial.opacity=selectedReveal*.5;
       // Once the complete vector surface is ready, retire all overlapping local
       // coast patches and raster edges together. Their differing sources caused halos.
-      patchOcean.visible=patchLand.visible=detailedLand.visible=coast.visible=surfaceMix<.01;
+      patchOcean.visible=patchLand.visible=detailedLand.visible=coast.visible=selectedReveal>.01&&surfaceMix<.01;
       material.opacity*=1-surfaceMix;selectedMaterial.opacity*=1-surfaceMix;
       regionMaterial.color.set('#576d64').lerp(new THREE.Color('#a4b8b0'),themeMix);regionMaterial.opacity=selectedReveal*THREE.MathUtils.lerp(.34,.25,themeMix);candidateMaterial.color.copy(regionMaterial.color);candidateMaterial.opacity=selectedReveal*.2;previewMaterial.color.set('#7b9b99').lerp(new THREE.Color('#b1d0cc'),themeMix);previewMaterial.opacity=selectedReveal*.22;previewEdgeMaterial.color.copy(previewMaterial.color);previewEdgeMaterial.opacity=selectedReveal*.7;
+      material.visible=material.opacity>.001;selectedLine.visible=selectedMaterial.opacity>.001;regionLines.visible=regionMaterial.opacity>.001;candidateLines.visible=candidateMaterial.opacity>.001;previewArea.visible=previewMaterial.opacity>.001;previewEdge.visible=previewEdgeMaterial.opacity>.001;
       trigger.classList.add('is-visible');portal.classList.toggle('is-away',scroll>.2);attribution.style.opacity=scroll>.2?'0':'.6';panel.classList.toggle('is-away',scroll>.25);
       const lights=THREE.MathUtils.smoothstep(zoom,.42,.78)*(1-THREE.MathUtils.smoothstep(scroll,.05,.3));
       world.updateMatrixWorld(true);camera.updateMatrixWorld();
