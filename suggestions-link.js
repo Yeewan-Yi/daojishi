@@ -9,7 +9,7 @@ export function mountSuggestionLink({host,site=currentSuggestionSite(),siteTitle
  const button=document.createElement('button');button.type='button';button.dataset.suggestionsLink='';button.className=shared?'site-tool':host.classList.contains('header-actions')?'icon-button nav-tool':'line-action';
  button.setAttribute('aria-label','共议 · 建议与修订');button.setAttribute('aria-expanded','false');button.setAttribute('aria-controls','council-panel');button.innerHTML=suggestionMark+'<span class="nav-caption" aria-hidden="true">共议</span>';host.append(button);
  let panel,controller,loading,contextKey,desired=false,composing=false,compositionEnded=-Infinity;
- const stylesheet=new URL('./suggestions.css?v=20261025-council-compact',import.meta.url);
+ const stylesheet=new URL('./suggestions.css?v=20261026-direct-status',import.meta.url);
  function loadStyle(){return new Promise((resolve,reject)=>{const found=document.querySelector('link[data-council-style]');if(found?.sheet){resolve();return;}const link=found||document.createElement('link');const timer=setTimeout(()=>{link.remove();reject(Error('共议样式载入超时，请重试。'));},12000);link.rel='stylesheet';link.href=stylesheet.href;link.dataset.councilStyle='';link.addEventListener('load',()=>{clearTimeout(timer);resolve();},{once:true});link.addEventListener('error',()=>{clearTimeout(timer);link.remove();reject(Error('共议样式暂未载入，请再试一次。'));},{once:true});if(!found)document.head.append(link);});}
  const badge=document.createElement('i');badge.className='council-unread-badge';badge.setAttribute('aria-hidden','true');badge.hidden=true;button.append(badge);
  const alertStatus=document.createElement('span');alertStatus.className='council-global-status';alertStatus.setAttribute('role','status');host.append(alertStatus);
@@ -19,7 +19,7 @@ export function mountSuggestionLink({host,site=currentSuggestionSite(),siteTitle
   const ctx=journeyContext(),key=JSON.stringify(ctx);
   if(controller&&key===contextKey)return;
   controller?.dispose();controller=null;contextKey=key;
-  const [module]=await Promise.all([import('./suggestions-ui.js?v=20261025-council-compact'),loadStyle()]);
+  const [module]=await Promise.all([import('./suggestions-ui.js?v=20261026-direct-status'),loadStyle()]);
   if(!panel){panel=document.createElement('aside');panel.id='council-panel';panel.className='council-panel';panel.dataset.councilPanel='';panel.dataset.tone=site==='main'&&!shared?'green':'blue';panel.setAttribute('aria-labelledby','council-title');panel.setAttribute('aria-hidden','true');panel.inert=true;panel.tabIndex=-1;document.body.append(panel);
    panel.addEventListener('wheel',event=>event.stopPropagation(),{passive:true});panel.addEventListener('touchstart',event=>event.stopPropagation(),{passive:true});panel.addEventListener('touchmove',event=>event.stopPropagation(),{passive:true});
    panel.addEventListener('compositionstart',()=>{composing=true;});panel.addEventListener('compositionend',event=>{composing=false;compositionEnded=event.timeStamp;});
