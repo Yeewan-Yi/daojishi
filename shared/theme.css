@@ -1,0 +1,4 @@
+.theme-mode-icon{fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round;overflow:visible;flex-shrink:0}
+.theme-mode-icon .theme-glyph{opacity:0;transform:rotate(-18deg) scale(.78);transform-origin:16px 16px;transition:opacity .32s ease,transform .5s cubic-bezier(.22,1,.36,1);pointer-events:none}
+html[data-theme-mode=dark] .theme-glyph-dark,html[data-theme-mode=light] .theme-glyph-light,html[data-theme-mode=system] .theme-glyph-system{opacity:1;transform:rotate(0) scale(1)}
+@media(prefers-reduced-motion:reduce){.theme-mode-icon .theme-glyph{transition:none}}

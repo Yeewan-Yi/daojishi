@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#f5f6f2">
   <meta name="description" content="有期，属于两个人的倒计时与回忆地图。记录期待，点亮共同走过的城市。">
   <title>有期 · 让期待有个刻度</title>
-  <script>try{document.documentElement.dataset.theme=localStorage.getItem('youqi.theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch{}document.documentElement.dataset.boot='pending';setTimeout(()=>{if(document.documentElement.dataset.boot!=='ready')delete document.documentElement.dataset.boot},16000)</script>
+  <script src="./shared/theme-init.js"></script>
+  <script>document.documentElement.dataset.boot='pending';setTimeout(()=>{if(document.documentElement.dataset.boot!=='ready')delete document.documentElement.dataset.boot},16000)</script>
   <style>
 #boot-screen{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:#f5f6f2;color:#63795c;opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s}html[data-theme=dark] #boot-screen{background:#0b1210;color:#a6ba9b}html[data-boot=loading] #boot-screen{opacity:1;visibility:visible}html[data-boot=pending] .app-shell,html[data-boot=loading] .app-shell,html[data-boot=pending] .letters-dock,html[data-boot=loading] .letters-dock{visibility:hidden}html[data-boot=ready] #boot-screen{pointer-events:none}#boot-screen[hidden]{display:none}.boot-panel{width:min(320px,70vw);text-align:center}.boot-name{font-size:23px;letter-spacing:5px;margin-bottom:28px}.boot-path{position:relative;height:48px}.boot-path:before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1px dashed currentColor;opacity:.26}.boot-fill{position:absolute;left:0;right:0;top:50%;height:1px;background:currentColor;transform:scaleX(var(--boot-progress,.04));transform-origin:left;transition:transform .7s cubic-bezier(.3,0,.2,1)}.boot-plane-motion{position:absolute;inset:0;transform:translateX(calc(var(--boot-progress,.04)*100%));transition:transform .7s cubic-bezier(.3,0,.2,1)}.boot-plane-motion svg{position:absolute;width:30px;height:30px;left:-15px;top:9px;fill:currentColor;transform:rotate(90deg);filter:drop-shadow(0 3px 6px #0001)}.boot-end{position:absolute;top:calc(50% - 3px);right:-3px;width:6px;height:6px;border:1px solid currentColor;border-radius:50%;background:var(--bg,#f5f6f2)}.boot-caption{font-size:12px;letter-spacing:2px;margin-top:22px;opacity:.65}@media(prefers-reduced-motion:reduce){#boot-screen,.boot-fill,.boot-plane-motion{transition:none}}
   </style>
@@ -20,7 +21,7 @@
   <link rel="stylesheet" href="./letters.css?v=20261021-experience">
   <link rel="stylesheet" href="./experience.css?v=20261021-experience">
   <link rel="stylesheet" href="./release-notes.css?v=20261022-album">
-  <script type="module" src="./app.js?v=20261026-atlas-exit"></script>
+  <script type="module" src="./app.js?v=20261026-system-theme"></script>
 </head>
 <body>
   <div id="boot-screen" role="status" aria-live="polite" aria-hidden="true"><div class="boot-panel"><div class="boot-name">有期</div><div class="boot-path"><span class="boot-fill"></span><span class="boot-end"></span><span class="boot-plane-motion"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2 8 7 5v2l-8-3v6l3 2v1l-4-1-4 1v-1l3-2v-6l-8 3v-2l7-5z"/></svg></span></div><div class="boot-caption">正在准备航程</div></div></div>

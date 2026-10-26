@@ -1,12 +1,13 @@
+import {mountThemeMode} from './shared/theme.js';
 import {createCommentRequests} from './shared/comment-requests.js';
-import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-council-compact';
+import {mountMobileTools} from './shared/mobile-tools.js?v=20261026-system-theme';
 import {journeyTree,cityChoices} from './journey-navigation.js?v=20261024-city-switch';
 import {mountSuggestionLink} from './suggestions-link.js?v=20261026-direct-status';
 import {createAlbumLoader,dismissAlbumLoader} from './album-loader.js?v=20261023-photos';
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261026-acceptance';
 import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion,lockModal} from './motion.js?v=20261026-acceptance';
-import {mountReleaseNotes} from './release-notes.js?v=20261026-direct-status';
+import {mountReleaseNotes} from './release-notes.js?v=20261026-system-theme';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 const atmosphere=document.querySelector('.memory-atmosphere');
 function pauseAtmosphere(){atmosphere?.classList.toggle('is-paused',document.hidden);}
@@ -16,10 +17,7 @@ mountSuggestionLink({host:document.querySelector('.memory-header nav[aria-label=
 mountMobileTools({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),primary:'#home-link'});
 $('brand-emblem').innerHTML=brandMark;$('trail-emblem').innerHTML=trailMark;
 for(const id of ['home-brand','home-link','map-link'])$(id).href=journeyLink('./',null,ctx);
-let theme;try{theme=localStorage.getItem('youqi.theme');}catch{}theme||=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
-function applyTheme(value){theme=value;document.documentElement.dataset.theme=value;$('memory-theme').setAttribute('aria-label',value==='dark'?'切换浅色模式':'切换深色模式');}
-applyTheme(theme);$('memory-theme').onclick=()=>{applyTheme(theme==='dark'?'light':'dark');try{localStorage.setItem('youqi.theme',theme);}catch{}};
-addEventListener('storage',e=>{if(e.key==='youqi.theme')applyTheme(e.newValue);});
+mountThemeMode($('memory-theme'),{colors:{light:'#eaf1f3',dark:'#101923'}});
 
 $('private-caption').textContent=client.local?'当前资料保存在此浏览器，清理网站数据会丢失。连接两人共享后可跨设备查看。':'留给我们两个人';
 
