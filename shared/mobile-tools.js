@@ -10,7 +10,7 @@ export function mountMobileTools({host,primary}={}){
  host.append(toggle,panel);
  for(const type of ['wheel','touchstart','touchmove'])panel.addEventListener(type,event=>event.stopPropagation(),{passive:true});
  function setOpen(open,restore=false){host.classList.toggle('tools-open',open);toggle.setAttribute('aria-expanded',String(open));panel.inert=!open;if(!open&&restore)toggle.focus({preventScroll:true});}
- function labelFor(node){if(node.dataset.suggestionsLink!==undefined)return '共议';if(node.id==='version-button')return '版本手记';return node.getAttribute('aria-label')||[...node.childNodes].filter(child=>!child.classList?.contains('mobile-tool-label')).map(child=>child.textContent).join('').trim();}
+ function labelFor(node){if(node.dataset.themeLabel)return node.dataset.themeLabel;if(node.dataset.suggestionsLink!==undefined)return '共议';if(node.id==='version-button')return '版本手记';return node.getAttribute('aria-label')||[...node.childNodes].filter(child=>!child.classList?.contains('mobile-tool-label')).map(child=>child.textContent).join('').trim();}
  const observer=new MutationObserver(reconcile);
  function reconcile(){observer.disconnect();
   for(const node of [...host.children])if(node!==toggle&&node!==panel&&node.matches('button,a')&&!node.matches(primary||':not(*)')&&!items.has(node)){const marker=document.createComment('tool position');node.before(marker);items.set(node,marker);}

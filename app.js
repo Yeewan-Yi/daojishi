@@ -1,7 +1,8 @@
-import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-council-compact';
+import {mountThemeMode} from './shared/theme.js';
+import {mountMobileTools} from './shared/mobile-tools.js?v=20261026-system-theme';
 import {brandMark} from './symbols.js?v=20261023-covers';
 import {mountSuggestionLink} from './suggestions-link.js?v=20261026-direct-status';
-import {mountReleaseNotes} from './release-notes.js?v=20261026-direct-status';
+import {mountReleaseNotes} from './release-notes.js?v=20261026-system-theme';
 import {journeyLink} from './journey-data.js?v=20261026-acceptance';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
@@ -15,6 +16,7 @@ import {mountDatePicker} from './date-picker.js?v=20261026-acceptance';
 const boot=startBoot();boot.advance(.22);
 
 const $ = id => document.getElementById(id);
+mountThemeMode($('theme-button'),{colors:{light:'#f5f6f2',dark:'#0b1210'}});
 const datePicker=mountDatePicker();
 bindModalMotion();
 mountReleaseNotes();
@@ -180,9 +182,6 @@ function initialize() {
   }
   if (!state) { state = readLocal() || defaultCountdown(); if (!invalidRoomLink) persist(); }
   setSaveLabel();
-  let theme;
-  try { theme = localStorage.getItem('youqi.theme'); } catch { /* Theme falls back to system preference. */ }
-  applyTheme(theme === 'dark' || theme === 'light' ? theme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   renderMetadata();
   setEditAccess();
   tick();
@@ -374,22 +373,8 @@ $('copy-button').addEventListener('click', async () => {
   }
 });
 
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  $('theme-button').querySelector('use').setAttribute('href', theme === 'dark' ? '#nav-sun' : '#nav-moon');
-  const label = theme === 'dark' ? '切换浅色模式' : '切换深色模式';
-  $('theme-button').setAttribute('aria-label', label);
-  $('theme-button').querySelector('.nav-caption').textContent = label;
-  document.querySelector('meta[name=theme-color]').content = theme === 'dark' ? '#0b1210' : '#f5f6f2';
-}
-$('theme-button').addEventListener('click', () => {
-  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  applyTheme(theme);
-  try { localStorage.setItem('youqi.theme', theme); } catch { /* The theme still works without storage. */ }
-});
-
 window.addEventListener('storage', event => {
-  if (event.key === 'youqi.theme' && ['dark', 'light'].includes(event.newValue)) applyTheme(event.newValue);
+
   if (event.key !== STORAGE_KEY || !event.newValue || sharedView || room) return;
   try {
     const next = validateCountdown(JSON.parse(event.newValue));

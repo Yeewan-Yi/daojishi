@@ -1,4 +1,4 @@
-import {initSubsite} from '../../shared/subsite.js?v=20261025-council-compact';
+import {initSubsite} from '../../shared/subsite.js?v=20261026-system-theme';
 const pageName='__PAGE_TITLE__'.startsWith('__')?'新篇':'__PAGE_TITLE__';
 initSubsite({name:pageName});document.title=pageName+' · 有期';document.querySelector('h1').textContent=pageName;
 // 示例仅保存到本机；多人共享的数据需要另行设计权限与服务端接口。
