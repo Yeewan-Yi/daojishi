@@ -1,5 +1,5 @@
 export const THEME_KEY='youqi.theme';
-export const THEME_MODES=['dark','light','system'];
+export const THEME_MODES=['light','dark','system'];
 const titles={dark:'暗色',light:'亮色',system:'跟随系统'};
 export const normalizeThemeMode=value=>THEME_MODES.includes(value)?value:'system';
 export const nextThemeMode=mode=>THEME_MODES[(THEME_MODES.indexOf(normalizeThemeMode(mode))+1)%THEME_MODES.length];
@@ -27,7 +27,7 @@ export function mountThemeMode(button,{colors={light:'#edf3f4',dark:'#101923'}}=
  if(button&&mounted.has(button))return mounted.get(button);
  let icon,caption;
  if(button){
-  if(!document.querySelector('link[data-theme-style]')){const link=document.createElement('link');link.rel='stylesheet';link.href=new URL('./theme.css?v=20261026-system-theme',import.meta.url).href;link.dataset.themeStyle='';document.head.append(link);}
+  if(!document.querySelector('link[data-theme-style]')){const link=document.createElement('link');link.rel='stylesheet';link.href=new URL('./theme.css?v=20261026-theme-hover',import.meta.url).href;link.dataset.themeStyle='';document.head.append(link);}
   icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 32 32');icon.setAttribute('aria-hidden','true');icon.classList.add('theme-mode-icon');
   icon.innerHTML=THEME_MODES.map(mode=>`<g class="theme-glyph theme-glyph-${mode}" data-mode="${mode}" opacity="0">${glyphs[mode]}</g>`).join('');
   const old=button.querySelector('svg');if(old)old.replaceWith(icon);else button.prepend(icon);

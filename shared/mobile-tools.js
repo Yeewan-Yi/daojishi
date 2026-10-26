@@ -15,7 +15,7 @@ export function mountMobileTools({host,primary}={}){
  function reconcile(){observer.disconnect();
   for(const node of [...host.children])if(node!==toggle&&node!==panel&&node.matches('button,a')&&!node.matches(primary||':not(*)')&&!items.has(node)){const marker=document.createComment('tool position');node.before(marker);items.set(node,marker);}
   host.classList.toggle('tools-compact',media.matches);toggle.hidden=!media.matches;panel.hidden=!media.matches;
-  for(const [node,marker]of items){if(media.matches){if(node.parentNode!==panel)panel.append(node);let label=node.querySelector('.mobile-tool-label');if(!label){label=document.createElement('span');label.className='mobile-tool-label';node.append(label);}label.textContent=labelFor(node);}else{if(marker.parentNode)marker.after(node);node.querySelector('.mobile-tool-label')?.remove();}}
+  for(const [node,marker]of items){if(media.matches){if(node.parentNode!==panel)panel.append(node);let label=node.querySelector('.mobile-tool-label');if(!label){label=document.createElement('span');label.className='mobile-tool-label';node.append(label);}label.textContent=labelFor(node);}else{if(marker.parentNode&&node.previousSibling!==marker)marker.after(node);node.querySelector('.mobile-tool-label')?.remove();}}
   if(media.matches){const rank=node=>node.matches('.atlas-trigger')?0:node.id==='share-button'?1:node.dataset.suggestionsLink!==undefined?2:node.matches('#theme-button,#memory-theme,[data-theme-toggle]')?3:node.id==='version-button'?4:2;for(const node of [...items.keys()].sort((a,b)=>rank(a)-rank(b)))panel.append(node);}
   const unread=host.querySelector('[data-suggestions-link]')?.dataset.unread;toggle.dataset.unread=unread||'0';
   if(!media.matches)setOpen(false);
