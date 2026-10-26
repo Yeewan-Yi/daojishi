@@ -1,12 +1,12 @@
 import {createCommentRequests} from './shared/comment-requests.js';
 import {mountMobileTools} from './shared/mobile-tools.js?v=20261025-council-compact';
 import {journeyTree,cityChoices} from './journey-navigation.js?v=20261024-city-switch';
-import {mountSuggestionLink} from './suggestions-link.js?v=20261025-council-compact';
+import {mountSuggestionLink} from './suggestions-link.js?v=20261026-direct-status';
 import {createAlbumLoader,dismissAlbumLoader} from './album-loader.js?v=20261023-photos';
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261026-acceptance';
 import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion,lockModal} from './motion.js?v=20261026-acceptance';
-import {mountReleaseNotes} from './release-notes.js?v=20261026-acceptance';
+import {mountReleaseNotes} from './release-notes.js?v=20261026-direct-status';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 const atmosphere=document.querySelector('.memory-atmosphere');
 function pauseAtmosphere(){atmosphere?.classList.toggle('is-paused',document.hidden);}
