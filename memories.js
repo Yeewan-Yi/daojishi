@@ -9,6 +9,10 @@ import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion,lockModal} from './motion.js?v=20261026-acceptance';
 import {mountReleaseNotes} from './release-notes.js?v=20261026-theme-hover';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
+const backTop=$('memory-back-top');
+function updateBackTop(){const visible=window.scrollY>24;backTop.classList.toggle('is-visible',visible);backTop.inert=!visible;backTop.setAttribute('aria-hidden',String(!visible));if(!visible&&document.activeElement===backTop)$('home-brand').focus({preventScroll:true});}
+window.addEventListener('scroll',updateBackTop,{passive:true});window.addEventListener('pageshow',updateBackTop);updateBackTop();
+backTop.onclick=()=>window.scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
 const atmosphere=document.querySelector('.memory-atmosphere');
 function pauseAtmosphere(){atmosphere?.classList.toggle('is-paused',document.hidden);}
 document.addEventListener('visibilitychange',pauseAtmosphere);pauseAtmosphere();
