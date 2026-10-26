@@ -1,7 +1,8 @@
 import * as THREE from './vendor/three.module.js';
+import {createFrameScheduler} from './shared/frame-scheduler.js';
 import { AIRCRAFT_RADIUS, VIEW_RESET_DURATION, clampProgress, globeCameraDistance, detailZoomInput, detailMapFov, resetPose, spherePoint, routePoint, routeTangent } from './globe-math.js?v=20261022-album';
 import { mountSurfaceProgress } from './globe-labels.js?v=20261022-album';
-import { mountMemoryMap } from './memory-map.js?v=20261023-top-navigation';
+import { mountMemoryMap } from './memory-map.js?v=20261026-atlas-exit';
 
 const lightPalette = { ocean: '#d8e5dd', land: '#a0b78f', coast: '#9aaf92', grid: '#b0c0a5', route: '#344d3b', future: '#637853', halo: '#b8d0b2' };
 const darkPalette = { ocean: '#243b37', land: '#74886a', coast: '#7c9276', grid: '#66806e', route: '#a7bd91', future: '#596e57', halo: '#638a79' };
@@ -295,7 +296,8 @@ export async function mountGlobe(container) {
   }
   let themeMix = initialTheme, themeFrom = initialTheme, themeTarget = initialTheme, themeStarted = 0;
   let progress = 0, phase = 'pending', scroll = 0, targetYaw = homeYaw, targetPitch = homePitch, yaw = homeYaw, pitch = homePitch;
-  let drag = null, touched = false, dragging = false, zoomChanging = false, cameraZoom = 0, frame = 0, lastFrame = 0, visible = !document.hidden;
+  let drag = null, touched = false, dragging = false, zoomChanging = false, cameraZoom = 0, lastFrame = 0, visible = !document.hidden;
+  const frames=createFrameScheduler(draw,{active:()=>visible&&canvas.dataset.contextLost!=='true'});
   let resetting = null, idleMix = 0;
   let selectedView = null, cameraDistance = 4.4, cameraFov = 35, detailZoom = 0, atlasFocusGuard = false;
   function zoomDetail(delta){
@@ -362,14 +364,13 @@ export async function mountGlobe(container) {
     markers.forEach(marker => marker.dot.material.color.set(marker.progress <= progress ? palette.route : palette.future));
   }
   function draw(now) {
-    frame = 0;
     if (!visible || canvas.dataset.contextLost === 'true') return;
     const themeMoving = updateTheme(now);
     const desiredDistance = selectedView ? THREE.MathUtils.lerp(selectedView.distance,1.04,detailZoom) + globeCameraDistance(cameraZoom) - globeCameraDistance(1) : globeCameraDistance(cameraZoom);
     const desiredFov=selectedView?detailMapFov(detailZoom):35;
     const distanceMoving = Math.abs(cameraDistance-desiredDistance) > .0001 || Math.abs(cameraFov-desiredFov)>.001;
     const settled = !resetting && !distanceMoving && Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) < .0002;
-    if (!dragging && !zoomChanging && settled && !themeMoving && !motion.matches && now - lastFrame < 32) { frame = requestAnimationFrame(draw); return; }
+    if (!dragging && !zoomChanging && settled && !themeMoving && !motion.matches && now - lastFrame < 32) { invalidate(); return; }
     const delta = Math.min((now - lastFrame) / 1000 || .016, .1); lastFrame = now;
     const follow = 1 - Math.exp(-delta * 12);
     cameraDistance = motion.matches ? desiredDistance : cameraDistance + (desiredDistance-cameraDistance)*follow;
@@ -399,9 +400,9 @@ export async function mountGlobe(container) {
     renderer.render(scene, camera);
     zoomChanging = false;
     const moving = distanceMoving || Math.abs(yaw - targetYaw) + Math.abs(pitch - targetPitch) > .0002;
-    if (((idle || moving || dragging || resetting || idleMix > .0002) && scroll < .98) || themeMoving) frame = requestAnimationFrame(draw);
+    if (((idle || moving || dragging || resetting || idleMix > .0002) && scroll < .98) || themeMoving) invalidate();
   }
-  function invalidate() { if (!frame && visible) frame = requestAnimationFrame(draw); }
+  function invalidate() { frames.invalidate(); }
   function resize() {
     const width = container.clientWidth, height = container.clientHeight;
     if (!width || !height) return;
@@ -472,9 +473,9 @@ export async function mountGlobe(container) {
     container.dataset.rotated = event.key === 'Home' ? 'false' : 'true'; invalidate();
   });
   canvas.addEventListener('blur', () => canvas.classList.remove('is-pointer-focus'));
-  canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); canvas.dataset.contextLost = 'true'; container.classList.remove('globe-3d'); document.body.classList.remove('has-globe-3d'); });
+  canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); canvas.dataset.contextLost = 'true'; frames.stop(); container.classList.remove('globe-3d'); document.body.classList.remove('has-globe-3d'); });
   canvas.addEventListener('webglcontextrestored', () => { delete canvas.dataset.contextLost; container.classList.add('globe-3d'); document.body.classList.add('has-globe-3d'); resize(); });
-  document.addEventListener('visibilitychange', () => { visible = !document.hidden; if (!visible) { cancelAnimationFrame(frame); frame = 0; } else invalidate(); });
+  document.addEventListener('visibilitychange', () => { visible = !document.hidden; if (!visible) frames.stop(); else invalidate(); });
   motion.addEventListener('change', invalidate);
   new MutationObserver(theme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   container.append(canvas); container.classList.add('globe-3d'); container.dataset.renderer = 'webgl';
