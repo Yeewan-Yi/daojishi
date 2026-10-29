@@ -2,6 +2,7 @@ import {openModal,closeModal} from './motion.js?v=20261026-acceptance';
 
 // Record shipped feature additions, removals and behavior changes only. Omit visual polish, copy edits and routine bug fixes.
 export const releases=[
+ {version:'2026.10.29.1',date:'2026-10-29',title:'把时间，写在照片背面',items:['拾光可保留并显示照片中的拍摄时间与地点，支持全相册时间正序、倒序及导入顺序浏览。','月份可直接横向切换；加载时可展示当前相册精选照片的缩略图。']},
  {version:'2026.10.26.2',date:'2026-10-26',title:'随昼夜，一起变换',items:['颜色模式支持暗色、亮色与跟随系统，选择会保留，并在各页面间同步。']},
  {version:'2026.10.26.1',date:'2026-10-26',title:'进展，点一下就记下',items:['共议可在讨论底部直接切换进展并自动保存，长建议无需翻到底部，也不再需要展开和确认。']},
  {version:'2026.10.25.4',date:'2026-10-25',title:'共议，轻一点',items:['双击筛选只保留该项；点击外部可收起共议，建议与讨论统一整栏滚动。','进展合并为待议、处理中、已完成与暂不处理；填写建议时可直接选择归属。']},
