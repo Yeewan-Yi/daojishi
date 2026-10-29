@@ -1,8 +1,8 @@
 import {mountThemeMode} from './shared/theme.js?v=20261026-theme-hover';
 import {mountMobileTools} from './shared/mobile-tools.js?v=20261026-theme-hover';
 import {brandMark} from './symbols.js?v=20261023-covers';
-import {mountSuggestionLink} from './suggestions-link.js?v=20261026-direct-status';
-import {mountReleaseNotes} from './release-notes.js?v=20261029-functional-history';
+import {mountSuggestionLink} from './suggestions-link.js?v=20261030-interactions';
+import {mountReleaseNotes} from './release-notes.js?v=20261030-interactions';
 import {journeyLink} from './journey-data.js?v=20261029-postcard';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
@@ -11,8 +11,8 @@ import { mountFlipClock } from './flip-clock.js';
 import { VIEW_RESET_DURATION, dampProgress, easeViewReset, explorationInput, percentageParts } from './globe-math.js?v=20261023-covers';
 import { mountLetters } from './letters-ui.js?v=20261026-acceptance';
 import {startBoot} from './boot.js?v=20261021-experience';
-import {openModal,closeModal,bindModalMotion,lockModal} from './motion.js?v=20261026-acceptance';
-import {mountDatePicker} from './date-picker.js?v=20261026-acceptance';
+import {openModal,closeModal,bindModalMotion,lockModal} from './motion.js?v=20261030-interactions';
+import {mountDatePicker} from './date-picker.js?v=20261030-interactions';
 const boot=startBoot();boot.advance(.22);
 
 const $ = id => document.getElementById(id);
@@ -495,7 +495,7 @@ addEventListener('journey-city-memory',event=>{const city=event.detail?.city;if(
 // Opening a different personal fragment must also switch the verified identity.
 addEventListener('hashchange', () => location.reload());
 installScrollScene();
-const globeReady=import('./globe-3d.js?v=20261029-city-alignment').then(async ({ mountGlobe }) => {
+const globeReady=import('./globe-3d.js?v=20261030-interactions').then(async ({ mountGlobe }) => {
   boot.advance(.65);
   globe3d = await mountGlobe($('flight-visual'));
   if (!globe3d) return;

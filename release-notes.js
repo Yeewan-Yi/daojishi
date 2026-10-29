@@ -1,4 +1,4 @@
-import {openModal,closeModal} from './motion.js?v=20261026-acceptance';
+import {openModal,closeModal,bindBackdropDismiss} from './motion.js?v=20261030-interactions';
 
 // Record shipped feature additions, removals and behavior changes only. Omit visual polish, copy edits and routine bug fixes.
 export const releases=[
@@ -39,5 +39,5 @@ export function mountReleaseNotes(){
   button.onclick=()=>openModal(dialog);
   dialog.querySelector('.release-close').onclick=()=>closeModal(dialog);
   dialog.addEventListener('cancel',event=>{event.preventDefault();closeModal(dialog);});
-  dialog.addEventListener('click',event=>{const rect=dialog.getBoundingClientRect();if(event.target===dialog&&(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom))closeModal(dialog);});
+  bindBackdropDismiss(dialog);
 }

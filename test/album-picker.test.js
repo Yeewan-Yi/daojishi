@@ -1,5 +1,16 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {parseHTML} from 'linkedom';import {mountAlbumPicker} from '../shared/album-picker.js';import {cityName} from '../shared/city-name.js';
 const flush=async()=>{await new Promise(resolve=>setImmediate(resolve));};
+test('a pending album save cannot clear a different city draft or show its stale error there',async()=>{
+ for(const fail of [false,true]){
+  const {document}=parseHTML('<html><body><div></div></body></html>');globalThis.document=document;const host=document.querySelector('div');let resolve,reject;
+  const picker=mountAlbumPicker({host,loadPreview:async()=>[],onSelect(){},onCreate:()=>new Promise((yes,no)=>{resolve=yes;reject=no;})});
+  picker.update({city:'old',rows:[],active:'',writable:true});host.querySelector('.album-opener').click();host.querySelector('.album-new').click();host.querySelector('input').value='旧城相册';
+  const pending=host.querySelector('form').onsubmit({preventDefault(){}});assert.equal(host.querySelector('input').disabled,true);
+  picker.update({city:'new',rows:[],active:'',writable:true});assert.equal(host.querySelector('input').value,'');host.querySelector('input').value='新城草稿';
+  if(fail)reject(Error('旧城请求失败'));else resolve();await pending;
+  assert.equal(host.querySelector('input').value,'新城草稿');assert.equal(host.querySelector('form p').textContent,'');assert.equal(host.querySelector('input').disabled,false);
+ }
+});
 function setup(loadPreview=async()=>[]){const {document}=parseHTML('<html><body><div id="host"></div></body></html>');globalThis.document=document;const selected=[],created=[],host=document.querySelector('#host');const picker=mountAlbumPicker({host,loadPreview,onSelect:id=>selected.push(id),onCreate:async name=>created.push(name)});return {host,picker,selected,created,open:()=>host.querySelector('.album-opener').click(),update:(city='city',rows=[])=>picker.update({city,rows,active:'',writable:true})};}
 test('city display omits a trailing administrative 市 without changing IDs or other text',()=>{for(const [raw,expected]of [['南京市','南京'],['绍兴','绍兴'],[' 马鞍山市 ','马鞍山'],['纽约','纽约'],['市中心','市中心'],['市','市']])assert.equal(cityName(raw),expected);});
 test('album previews wait for expansion and render the actual 0/1/2/3 sheet counts',async()=>{let calls=0;const f=setup(async(city,id)=>{calls++;return Array.from({length:Number(id)||0},(_,i)=>'photo-'+id+i);});f.update('city',[1,2,3].map(n=>({id:String(n),name:'Album '+n,total:n})));assert.equal(calls,0);assert.equal(f.host.querySelector('#album-picker-panel').inert,true);f.open();await flush();for(const n of [1,2,3])assert.equal(f.host.querySelector(`[data-album="${n}"] .album-stack`).dataset.count,String(n));assert.equal(f.host.querySelector('[data-album=""] .album-stack').dataset.count,'0');assert.equal(calls,5);f.host.querySelector('[data-album="2"]').click();assert.deepEqual(f.selected,['2']);assert.equal(f.host.querySelector('.album-opener').getAttribute('aria-expanded'),'false');});
