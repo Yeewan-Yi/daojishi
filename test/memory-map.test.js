@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {countryAt,countryView,VISITED_CITIES,canPickCountry,sharedCountryEdges,citySurfaceGeometry} from '../memory-map.js';
+import {countryAt,countryView,VISITED_CITIES,canPickCountry,sharedCountryEdges,citySurfaceGeometry,cityOutlineGeometry,alignCityBoundaries,CITY_FILL_RADIUS,CITY_EDGE_RADIUS,MAP_SURFACE_RADIUS} from '../memory-map.js';
 const countries=JSON.parse(readFileSync(new URL('../countries.geojson',import.meta.url))).features;
 const cities=JSON.parse(readFileSync(new URL('../visited-cities.geojson',import.meta.url))).features;
 
@@ -13,11 +13,28 @@ test('visited city areas cover their city centers and form finite curved surface
     assert.ok(positions.count>300);assert.equal(positions.count%3,0);
     for(let i=0;i<positions.count;i++){
       const radius=Math.hypot(positions.getX(i),positions.getY(i),positions.getZ(i));
-      assert.ok(Math.abs(radius-1.011)<.000001,'city area follows the globe above its surface');
+      assert.ok(Math.abs(radius-CITY_FILL_RADIUS)<.000001,'city area follows the globe above its surface');
     }
     geometry.dispose();
   }
   assert.equal(countryAt(cities,121.4737,31.2304),null,'nearby Shanghai is not highlighted as visited');
+});
+
+test('saved city highlights use the same boundary vertices as the district map without changing saved records',()=>{
+  const boundaries=['320000','330000'].flatMap(id=>JSON.parse(readFileSync(new URL('../map-data/cities-'+id+'.json',import.meta.url))).features);
+  const before=JSON.stringify(cities),aligned=alignCityBoundaries(cities,boundaries);
+  for(const city of aligned){const canonical=boundaries.find(f=>f.properties.id===city.properties.id);assert.deepEqual(city.geometry,canonical.geometry);const original=cities.find(f=>'cn:'+f.properties.id===city.properties.id);assert.equal(city.properties.name,original.properties.name);assert.equal(city.properties.longitude,original.properties.longitude);}
+  assert.equal(JSON.stringify(cities),before);
+  assert.deepEqual(alignCityBoundaries(cities,[]).map(f=>f.geometry),cities.map(f=>f.geometry),'missing optional map retains saved boundaries');
+});
+
+test('city fill and outline remain attached to the terrain under close perspective',()=>{
+  for(const feature of cities){const geometry=cityOutlineGeometry(feature),p=geometry.getAttribute('position');for(let i=0;i<p.count;i++)assert.ok(Math.abs(Math.hypot(p.getX(i),p.getY(i),p.getZ(i))-CITY_EDGE_RADIUS)<.000001);geometry.dispose();}
+  // At the closest camera distance, a lifted shell used to magnify an identical
+  // boundary by over 20%. Keep the fill/terrain projection difference below 0.3%.
+  const projected=r=>r/(1.04-r);
+  assert.ok(Math.abs(projected(CITY_FILL_RADIUS)/projected(MAP_SURFACE_RADIUS)-1)<.003);
+  assert.ok(CITY_EDGE_RADIUS>CITY_FILL_RADIUS);
 });
 
 test('city surface triangulation preserves holes instead of filling unvisited enclaves',()=>{

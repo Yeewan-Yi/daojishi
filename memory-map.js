@@ -9,6 +9,16 @@ export const VISITED_CITIES = Object.freeze([
   Object.freeze({name:'绍兴',country:'CHN',longitude:120.57,latitude:30,offset:[18,15]})
 ]);
 export const polygonsOf = feature => feature.geometry.type === 'Polygon' ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+// Keep every administrative overlay close to the same terrain surface. Large
+// radial offsets produce visible parallax at city-level camera distances.
+export const MAP_SURFACE_RADIUS = 1.002;
+export const CITY_FILL_RADIUS = MAP_SURFACE_RADIUS + .00004;
+export const MAP_BORDER_RADIUS = MAP_SURFACE_RADIUS + .00008;
+export const CITY_EDGE_RADIUS = MAP_SURFACE_RADIUS + .00010;
+export function alignCityBoundaries(cities,boundaries){
+  const byId=new Map(boundaries.map(f=>[normalizedCity(f).properties.id,f.geometry]));
+  return cities.map(normalizedCity).map(f=>({...f,geometry:byId.get(f.properties.id)||f.geometry}));
+}
 export const COUNTRY_PICK_ZOOM = .86;
 export const canPickCountry = (zoom, scroll=0,hasSelection=false) => (hasSelection||zoom >= COUNTRY_PICK_ZOOM) && scroll < .15;
 // Retain geographic detail without drawing the same frontier twice or tracing coasts.
@@ -50,7 +60,7 @@ export function countryView(feature) {
   return {longitude,latitude,distance:Math.max(1.09,Math.min(3,1+Math.sin(extent)/Math.tan(THREE.MathUtils.degToRad(15))))};
 }
 // Tessellate before projecting so triangle interiors follow the curved surface too.
-export function citySurfaceGeometry(feature,radius=1.011,maxEdge=.012) {
+export function citySurfaceGeometry(feature,radius=CITY_FILL_RADIUS,maxEdge=.012) {
   const positions=[];
   function triangle(a,b,c){
     const ab=a.distanceTo(b),bc=b.distanceTo(c),ca=c.distanceTo(a),longest=Math.max(ab,bc,ca);
@@ -68,17 +78,17 @@ export function citySurfaceGeometry(feature,radius=1.011,maxEdge=.012) {
   }
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));const normals=new Float32Array(positions.length);for(let i=0;i<positions.length;i+=3){const length=Math.hypot(positions[i],positions[i+1],positions[i+2]);for(let j=0;j<3;j++)normals[i+j]=positions[i+j]/length;}geometry.setAttribute('normal',new THREE.BufferAttribute(normals,3));return geometry;
 }
-function cityOutlineGeometry(feature){
+export function cityOutlineGeometry(feature){
   const edges=polygonsOf(feature).flatMap(polygon=>polygon.flatMap(ring=>ring.slice(1).map((b,i)=>({a:ring[i],b}))));
-  return borderGeometry(edges).scale(1.012/1.006,1.012/1.006,1.012/1.006);
+  return borderGeometry(edges,CITY_EDGE_RADIUS);
 }
-function borderGeometry(edges) {
+function borderGeometry(edges,radius=MAP_BORDER_RADIUS) {
   const positions=[];
   for(const edge of edges) {
-    const a=new THREE.Vector3(...spherePoint(...edge.a,1.006)),b=new THREE.Vector3(...spherePoint(...edge.b,1.006));
+    const a=new THREE.Vector3(...spherePoint(...edge.a,radius)),b=new THREE.Vector3(...spherePoint(...edge.b,radius));
     const steps=Math.max(1,Math.ceil(a.angleTo(b)/.025));
     let previous=a;
-    for(let step=1;step<=steps;step++){const next=a.clone().lerp(b,step/steps).normalize().multiplyScalar(1.006);positions.push(...previous.toArray(),...next.toArray());previous=next;}
+    for(let step=1;step<=steps;step++){const next=a.clone().lerp(b,step/steps).normalize().multiplyScalar(radius);positions.push(...previous.toArray(),...next.toArray());previous=next;}
   }
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));return geometry;
 }
@@ -111,8 +121,14 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite,onDetailZ
   const picker=panel.querySelector('.atlas-country-picker select'),regionPicker=panel.querySelector('.atlas-region-picker select'),cityPicker=panel.querySelector('.atlas-city-picker select'),searchForm=panel.querySelector('.atlas-city-search'),searchResults=searchForm.querySelector('select'),list=panel.querySelector('.atlas-cities'),summary=panel.querySelector('.atlas-summary'),detail=panel.querySelector('.atlas-city-detail'),mark=panel.querySelector('.atlas-mark'),memoryLink=panel.querySelector('.atlas-open-memories'),error=panel.querySelector('.atlas-error');
   function setOpen(value){open=value;panel.classList.toggle('is-open',value);panel.inert=!value;trigger.setAttribute('aria-expanded',String(value));document.body.classList.toggle('atlas-open',value);}
   function disposeGeometry(object,geometry=new THREE.BufferGeometry()){object.geometry.dispose();object.geometry=geometry;}
-  function installCities(next){
-    for(const pin of pins){pin.label.remove();pin.fill.geometry.dispose();pin.fill.material.dispose();pin.outline.geometry.dispose();pin.outline.material.dispose();}citiesGroup.clear();cityFeatures=next.map(normalizedCity);attribution.hidden=!cityFeatures.some(f=>f.properties.id.startsWith('osm:'));pins=cityFeatures.map(makePin);trigger.querySelector('.atlas-count').textContent=cityFeatures.length;refreshCities();onChange();
+  let cityInstall=0;
+  async function installCities(next){
+    const generation=++cityInstall;
+    const provinces=[...new Set(next.map(normalizedCity).map(f=>/^cn:\d{6}$/.test(f.properties.id)?f.properties.id.slice(3,5)+'0000':null).filter(Boolean))];
+    const maps=await Promise.allSettled(provinces.map(id=>loadData('cities-'+id)));
+    if(generation!==cityInstall)return;
+    const boundaries=maps.flatMap(result=>result.status==='fulfilled'?result.value.features:[]);
+    for(const pin of pins){pin.label.remove();pin.fill.geometry.dispose();pin.fill.material.dispose();pin.outline.geometry.dispose();pin.outline.material.dispose();}citiesGroup.clear();cityFeatures=alignCityBoundaries(next,boundaries);attribution.hidden=!cityFeatures.some(f=>f.properties.id.startsWith('osm:'));pins=cityFeatures.map(makePin);trigger.querySelector('.atlas-count').textContent=cityFeatures.length;refreshCities();onChange();
   }
   function makePin(feature){const city=feature.properties,normal=new THREE.Vector3(...spherePoint(city.longitude,city.latitude));
     const fill=new THREE.Mesh(citySurfaceGeometry(feature),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));const outline=new THREE.LineSegments(cityOutlineGeometry(feature),new THREE.LineBasicMaterial({transparent:true,opacity:0,depthWrite:false}));citiesGroup.add(fill,outline);
@@ -122,7 +138,7 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite,onDetailZ
     const cities=cityFeatures.filter(f=>f.properties.country===selected?.properties.id);summary.textContent=selected?cities.length?`共同去过 ${cities.length} 座城市`:'点亮一城，留下一段共同回忆':'';list.replaceChildren();
     for(const f of cities){const button=document.createElement('button');button.type='button';button.className='atlas-city';button.dataset.city=f.properties.id;const name=document.createElement('span');name.textContent=cityName(f.properties.name);const arrow=document.createElement('span');arrow.textContent='↗';button.append(name,arrow);button.onclick=()=>selectCity(f);list.append(button);}refreshDetail();
   }
-  function refreshDetail(){detail.hidden=!activeCity;const visited=activeCity&&cityFeatures.some(f=>f.properties.id===activeCity.properties.id);const nextPreview=activeCity&&!visited?activeCity.properties.id:'';if(previewKey!==nextPreview){previewKey=nextPreview;disposeGeometry(previewArea,nextPreview?citySurfaceGeometry(activeCity,1.01):new THREE.BufferGeometry());disposeGeometry(previewEdge,nextPreview?cityOutlineGeometry(activeCity):new THREE.BufferGeometry());}if(!activeCity)return;detail.querySelector('h3').textContent=cityName(activeCity.properties.name);mark.textContent=visited?'取消点亮':'点亮这一城';mark.classList.toggle('is-lit',visited);mark.disabled=busy;mark.setAttribute('aria-pressed',String(visited));memoryLink.hidden=!visited;memoryLink.href=journeyLink('memories.html',activeCity.properties.id);for(const b of list.children)b.classList.toggle('is-active',b.dataset.city===activeCity.properties.id);}
+  function refreshDetail(){detail.hidden=!activeCity;const visited=activeCity&&cityFeatures.some(f=>f.properties.id===activeCity.properties.id);const nextPreview=activeCity&&!visited?activeCity.properties.id:'';if(previewKey!==nextPreview){previewKey=nextPreview;disposeGeometry(previewArea,nextPreview?citySurfaceGeometry(activeCity):new THREE.BufferGeometry());disposeGeometry(previewEdge,nextPreview?cityOutlineGeometry(activeCity):new THREE.BufferGeometry());}if(!activeCity)return;detail.querySelector('h3').textContent=cityName(activeCity.properties.name);mark.textContent=visited?'取消点亮':'点亮这一城';mark.classList.toggle('is-lit',visited);mark.disabled=busy;mark.setAttribute('aria-pressed',String(visited));memoryLink.hidden=!visited;memoryLink.href=journeyLink('memories.html',activeCity.properties.id);for(const b of list.children)b.classList.toggle('is-active',b.dataset.city===activeCity.properties.id);}
   function focusFeature(feature){const view=countryView(feature);onFocus({...view,distance:feature.properties.country?Math.max(1.10,Math.min(1.65,view.distance)):view.distance});}
   function selectCity(feature){activeCity=normalizedCity(feature);const country=features.find(f=>f.properties.id===activeCity.properties.country);if(country&&selected?.properties.id!==country.properties.id)selectCountry(country,{keepCity:true});setOpen(true);refreshDetail();focusFeature(activeCity);}
   async function selectRegion(id){
@@ -137,19 +153,19 @@ export function mountMemoryMap(world,container,{onFocus,onExit,onWrite,onDetailZ
   async function selectCountry(feature,{keepCity=false}={}){
     prepareVectorLand();
     if(!feature)return;const generation=++countryLoad;selected=feature;regions=[];selectedRegion=null;candidates=[];cityLoad++;picker.value=feature.properties.id;regionPicker.replaceChildren(new Option('正在准备地区…',''));cityPicker.replaceChildren(new Option('先选择省州地区',''));if(!keepCity)activeCity=null;error.textContent=connectionError;searchResults.hidden=true;searchForm.hidden=feature.properties.id==='CHN';disposeGeometry(regionLines);disposeGeometry(candidateLines);disposeGeometry(patchOcean);disposeGeometry(patchLand);disposeGeometry(detailedLand);disposeGeometry(coast);disposeGeometry(selectedLine,borderGeometry(edges.filter(e=>e.owners.has(feature.properties.id))));setOpen(true);refreshCities();if(!keepCity)focusFeature(feature);
-    try{const data=await loadData(feature.properties.id);if(generation!==countryLoad)return;regions=data.regions;regionPicker.replaceChildren(new Option('全部地区',''));for(const f of regions)regionPicker.append(new Option(cityName(f.properties.name),f.properties.id));disposeGeometry(regionLines,borderGeometry(sharedCountryEdges(regions)));disposeGeometry(coast,cityOutlineGeometry(data.country).scale(1.005/1.012,1.005/1.012,1.005/1.012));disposeGeometry(detailedLand,citySurfaceGeometry(data.country,1.002,.025));if(data.neighborhood){patchCenter.value.set(...spherePoint(...data.neighborhood.center));patchRadius.value=data.neighborhood.radius;disposeGeometry(patchOcean,citySurfaceGeometry(data.neighborhood.ocean,1.0008,.02));disposeGeometry(patchLand,citySurfaceGeometry(data.neighborhood.land,1.0015,.02));}onChange();}catch{if(generation===countryLoad){regionPicker.replaceChildren(new Option('地区暂未载入',''));error.textContent='详细地图暂未载入，已有履痕仍可查看。';}}
+    try{const data=await loadData(feature.properties.id);if(generation!==countryLoad)return;regions=data.regions;regionPicker.replaceChildren(new Option('全部地区',''));for(const f of regions)regionPicker.append(new Option(cityName(f.properties.name),f.properties.id));disposeGeometry(regionLines,borderGeometry(sharedCountryEdges(regions)));disposeGeometry(coast,cityOutlineGeometry(data.country));disposeGeometry(detailedLand,citySurfaceGeometry(data.country,1.002,.025));if(data.neighborhood){patchCenter.value.set(...spherePoint(...data.neighborhood.center));patchRadius.value=data.neighborhood.radius;disposeGeometry(patchOcean,citySurfaceGeometry(data.neighborhood.ocean,1.0008,.02));disposeGeometry(patchLand,citySurfaceGeometry(data.neighborhood.land,1.0015,.02));}onChange();}catch{if(generation===countryLoad){regionPicker.replaceChildren(new Option('地区暂未载入',''));error.textContent='详细地图暂未载入，已有履痕仍可查看。';}}
   }
   function close(){countryLoad++;cityLoad++;setOpen(false);selected=null;activeCity=null;selectedRegion=null;regions=[];onExit();}
   panel.querySelector('.atlas-close').onclick=close;panel.querySelector('[aria-label="进一步放大地图"]').onclick=()=>onDetailZoom(-140);panel.querySelector('[aria-label="缩小地图"]').onclick=()=>onDetailZoom(140);
   trigger.onclick=()=>{if(open)close();else selectCountry(features.find(f=>f.properties.id==='CHN'));};picker.onchange=()=>selectCountry(features.find(f=>f.properties.id===picker.value));regionPicker.onchange=()=>selectRegion(regionPicker.value);cityPicker.onchange=()=>{const f=candidates.find(f=>f.properties.id===cityPicker.value);if(f)selectCity(f);};
-  mark.onclick=async()=>{if(!activeCity||busy)return;const feature=activeCity,visited=cityFeatures.some(f=>f.properties.id===feature.properties.id);busy=true;refreshDetail();error.textContent='';try{context=journeyContext();client=new JourneyClient(context);await client.mark(feature,!visited);installCities(await client.cities());window.dispatchEvent(new Event('journey-cities-changed'));}catch(e){error.textContent=e.message;}finally{busy=false;refreshDetail();}};
+  mark.onclick=async()=>{if(!activeCity||busy)return;const feature=activeCity,visited=cityFeatures.some(f=>f.properties.id===feature.properties.id);busy=true;refreshDetail();error.textContent='';try{context=journeyContext();client=new JourneyClient(context);await client.mark(feature,!visited);await installCities(await client.cities());window.dispatchEvent(new Event('journey-cities-changed'));}catch(e){error.textContent=e.message;}finally{busy=false;refreshDetail();}};
   searchForm.onsubmit=async e=>{
     e.preventDefault();const query=searchForm.querySelector('input').value.trim();if(!query||!selected)return;const iso=selectedRegion?.properties.id==='710000'?'tw':selected.properties.iso2;const key=`${selected.properties.id}:${selectedRegion?.properties.id||''}:${query}`;const country=selected,region=selectedRegion;error.textContent='正在寻找城市边界…';const submit=searchForm.querySelector('button');submit.disabled=true;
     try{let result=searchCache.get(key);if(!result){if(Date.now()-lastSearch<1500)throw Error('请稍等片刻再搜索。');lastSearch=Date.now();result=await client.searchCities(`${query} ${region?.properties.name||''}`,iso);searchCache.set(key,result);}if(selected?.properties.id!==country.properties.id)return;const matches=result.filter(r=>['Polygon','MultiPolygon'].includes(r.geojson?.type)&&!['country','state','province','region','continent'].includes(r.addresstype));candidates=matches.map(r=>validCity({type:'Feature',properties:{id:`osm:${r.osm_type}:${r.osm_id}`,name:r.name||query,country:country.properties.id,region:region?.properties.name||'',longitude:Number(r.lon),latitude:Number(r.lat)},geometry:r.geojson}));searchResults.replaceChildren(new Option(candidates.length?'选择城市边界':'未找到城市区域，请换一个名称',''));for(const f of candidates)searchResults.append(new Option(`${cityName(f.properties.name)} · 城市区域`,f.properties.id));searchResults.hidden=false;error.textContent=candidates.length?'':'未找到可用的城市区域边界，请尝试城市全名。';}catch(err){error.textContent=err.message;}finally{submit.disabled=false;}
   };
   searchResults.onchange=()=>{const f=candidates.find(f=>f.properties.id===searchResults.value);if(f)selectCity(f);};
   addEventListener('keydown',e=>{if(e.key==='Escape'&&open&&!document.querySelector('dialog[open]')){e.stopImmediatePropagation();e.preventDefault();close();trigger.focus({preventScroll:true});}},true);
-  async function syncCities(){if(syncing||document.hidden)return;syncing=true;try{const nextContext=journeyContext();if(JSON.stringify(nextContext)!==JSON.stringify(context)){context=nextContext;client=new JourneyClient(context);portal.href=journeyLink('memories.html');}const next=await client.cities(),signature=JSON.stringify(next);connectionError='';if(signature!==revision){revision=signature;installCities(next);}}catch(e){connectionError=e.message;if(open)error.textContent=e.message;if(!pins.length){try{const data=await fetch('./visited-cities.geojson').then(r=>r.json());installCities(data.features);}catch{}}}finally{syncing=false;}}
+  async function syncCities(){if(syncing||document.hidden)return;syncing=true;try{const nextContext=journeyContext();if(JSON.stringify(nextContext)!==JSON.stringify(context)){context=nextContext;client=new JourneyClient(context);portal.href=journeyLink('memories.html');}const next=await client.cities(),signature=JSON.stringify(next);connectionError='';if(signature!==revision){revision=signature;await installCities(next);}}catch(e){connectionError=e.message;if(open)error.textContent=e.message;if(!pins.length){try{const data=await fetch('./visited-cities.geojson').then(r=>r.json());await installCities(data.features);}catch{}}}finally{syncing=false;}}
   addEventListener('journey-cities-changed',syncCities);addEventListener('storage',e=>{if(e.key?.startsWith('youqi.journey')||e.key?.startsWith('youqi.letters.identity'))syncCities();});setInterval(syncCities,12000);
   const countryReady=fetch(new URL('./countries.geojson?v=20261022-album',import.meta.url)).then(r=>{if(!r.ok)throw Error('Country map unavailable');return r.json();}).then(data=>{features=data.features;edges=sharedCountryEdges(features);group.add(new THREE.LineSegments(borderGeometry(edges),material));for(const f of [...features].sort((a,b)=>a.properties.name.localeCompare(b.properties.name,'zh')))picker.append(new Option(cityName(f.properties.name),f.properties.id));trigger.disabled=false;}).catch(()=>{trigger.disabled=true;trigger.title='地图暂未载入，刷新后重试';});trigger.disabled=true;
   const citiesReady=syncCities();
