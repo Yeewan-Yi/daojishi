@@ -1,4 +1,5 @@
 import {outsideCouncilPointer} from './suggestion-presentation.js';
+import {focusPageTool} from './shared/focus-return.js';
 import {mountCouncilAlerts} from './suggestions-alerts.js?v=20261025-council-compact';
 import {journeyContext} from './journey-data.js';
 export const suggestionMark='<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 5h17v18H12l-6 5ZM11 10h8m-8 5h5M23 9h4v18H16l-4 3"/><path d="m18 18 2 2 5-6"/></svg>';
@@ -29,7 +30,7 @@ export function mountSuggestionLink({host,site=currentSuggestionSite(),siteTitle
  }
  async function setOpen(open){
   desired=open;button.setAttribute('aria-expanded',String(open));
-  if(!open){if(panel){panel.classList.remove('is-open');panel.setAttribute('aria-hidden','true');panel.inert=true;controller?.setActive(false);composing=false;if(panel.contains(document.activeElement))button.focus({preventScroll:true});}return;}
+  if(!open){if(panel){const restoreFocus=panel.contains(document.activeElement);panel.classList.remove('is-open');panel.setAttribute('aria-hidden','true');panel.inert=true;controller?.setActive(false);composing=false;if(restoreFocus)focusPageTool(button);}return;}
   button.setAttribute('aria-busy','true');
   try{loading??=prepare().finally(()=>{loading=null;});await loading;if(!desired)return;panel.inert=false;panel.setAttribute('aria-hidden','false');panel.classList.add('is-open');controller.setActive(true);controller.focus();button.removeAttribute('title');}
   catch(error){desired=false;button.setAttribute('aria-expanded','false');button.title=error.message;let status=host.querySelector('[data-council-error]');if(!status){status=document.createElement('span');status.dataset.councilError='';status.setAttribute('role','status');host.append(status);}status.textContent='共议暂未载入，请再点一次。';}

@@ -1,5 +1,14 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {lockModal,closeModal} from '../motion.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {lockModal,closeModal,bindBackdropDismiss} from '../motion.js';
 function dialog(){const attrs=new Map(),classes=new Set(),controls=[{disabled:false},{disabled:true}];return {controls,attrs,classes,open:true,querySelectorAll:()=>controls,getAttribute:name=>attrs.get(name)??null,setAttribute:(name,value)=>attrs.set(name,value),removeAttribute:name=>attrs.delete(name),classList:{add:name=>classes.add(name),remove:name=>classes.delete(name)},close(){this.open=false;}};}
 test('pending dialogs reject backdrop/Escape close and restore original control state',()=>{const d=dialog(),release=lockModal(d);assert.ok(d.controls.every(c=>c.disabled));assert.equal(d.attrs.get('aria-busy'),'true');closeModal(d);assert.equal(d.open,true);release();release();assert.deepEqual(d.controls.map(c=>c.disabled),[false,true]);assert.equal(d.attrs.has('aria-busy'),false);});
 test('nested pending operations keep the window locked until both finish',()=>{const d=dialog(),one=lockModal(d),two=lockModal(d);one();assert.ok(d.controls.every(c=>c.disabled));closeModal(d);assert.equal(d.open,true);two();assert.equal(d.controls[0].disabled,false);});
 test('starting a save cancels a previously scheduled dismiss animation',t=>{t.mock.timers.enable({apis:['setTimeout']});const previous=Object.getOwnPropertyDescriptor(globalThis,'matchMedia');Object.defineProperty(globalThis,'matchMedia',{value:()=>({matches:false}),configurable:true});t.after(()=>previous?Object.defineProperty(globalThis,'matchMedia',previous):delete globalThis.matchMedia);const d=dialog();closeModal(d);t.mock.timers.tick(80);const release=lockModal(d);t.mock.timers.tick(500);assert.equal(d.open,true);assert.equal(d.classes.has('is-closing'),false);release();closeModal(d);t.mock.timers.tick(220);assert.equal(d.open,false);});
+
+test('dragging text from a dialog onto its backdrop cannot dismiss it; an intentional backdrop click still does',t=>{
+ const previous=Object.getOwnPropertyDescriptor(globalThis,'matchMedia');Object.defineProperty(globalThis,'matchMedia',{value:()=>({matches:true}),configurable:true});t.after(()=>previous?Object.defineProperty(globalThis,'matchMedia',previous):delete globalThis.matchMedia);
+ const d=dialog(),events=new Map();d.getBoundingClientRect=()=>({left:100,right:300,top:100,bottom:300});d.addEventListener=(type,fn)=>{assert.equal(events.has(type),false,'bind only once');events.set(type,fn);};bindBackdropDismiss(d);bindBackdropDismiss(d);
+ const event=(target,x,y)=>({target,clientX:x,clientY:y,button:0});
+ events.get('pointerdown')(event({},150,150));events.get('click')(event(d,50,50));assert.equal(d.open,true);
+ events.get('pointerdown')(event(d,50,50));events.get('pointercancel')();events.get('click')(event(d,50,50));assert.equal(d.open,true);
+ events.get('pointerdown')(event(d,50,50));events.get('click')(event(d,50,50));assert.equal(d.open,false);
+});
