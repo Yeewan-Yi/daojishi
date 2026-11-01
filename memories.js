@@ -3,7 +3,7 @@ import {drawPencil} from './shared/pencil-art.js';
 import {captureLabels} from './shared/photo-metadata.js';
 import {cityName} from './shared/city-name.js';
 import {mountAlbumPicker} from './shared/album-picker.js?v=20261030-interactions';
-import {mountThemeMode} from './shared/theme.js?v=20261026-theme-hover';
+import {mountThemeMode} from './shared/theme.js?v=20261101-compact-theme';
 import {createCommentRequests} from './shared/comment-requests.js';
 import {mountMobileTools} from './shared/mobile-tools.js?v=20261026-theme-hover';
 import {journeyTree,cityChoices} from './journey-navigation.js?v=20261024-city-switch';

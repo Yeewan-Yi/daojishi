@@ -1,4 +1,4 @@
-import {mountThemeMode} from './shared/theme.js?v=20261026-theme-hover';
+import {mountThemeMode} from './shared/theme.js?v=20261101-compact-theme';
 import {mountMobileTools} from './shared/mobile-tools.js?v=20261026-theme-hover';
 import {brandMark} from './symbols.js?v=20261023-covers';
 import {mountSuggestionLink} from './suggestions-link.js?v=20261030-interactions';

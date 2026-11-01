@@ -27,7 +27,7 @@ export function mountThemeMode(button,{colors={light:'#edf3f4',dark:'#101923'}}=
  if(button&&mounted.has(button))return mounted.get(button);
  let icon,caption;
  if(button){
-  if(!document.querySelector('link[data-theme-style]')){const link=document.createElement('link');link.rel='stylesheet';link.href=new URL('./theme.css?v=20261026-theme-hover',import.meta.url).href;link.dataset.themeStyle='';document.head.append(link);}
+  if(!document.querySelector('link[data-theme-style]')){const link=document.createElement('link');link.rel='stylesheet';link.href=new URL('./theme.css?v=20261101-compact-theme',import.meta.url).href;link.dataset.themeStyle='';document.head.append(link);}
   icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 32 32');icon.setAttribute('aria-hidden','true');icon.classList.add('theme-mode-icon');
   icon.innerHTML=THEME_MODES.map(mode=>`<g class="theme-glyph theme-glyph-${mode}" data-mode="${mode}" opacity="0">${glyphs[mode]}</g>`).join('');
   const old=button.querySelector('svg');if(old)old.replaceWith(icon);else button.prepend(icon);
@@ -37,7 +37,7 @@ export function mountThemeMode(button,{colors={light:'#edf3f4',dark:'#101923'}}=
  const controller=createThemeController({storage,media:matchMedia('(prefers-color-scheme: dark)'),onChange({mode,theme,next}){
   const root=document.documentElement;root.dataset.themeMode=mode;if(root.dataset.theme!==theme)root.dataset.theme=theme;
   const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=colors[theme];
-  if(button){for(const glyph of icon.children)glyph.setAttribute('opacity',glyph.dataset.mode===mode?'1':'0');caption.textContent=titles[mode];button.dataset.themeLabel=titles[mode];button.dataset.themeMode=mode;const label=`颜色模式：${titles[mode]}${mode==='system'?'（'+titles[theme]+'）':''}；点击切换为${titles[next]}`;button.setAttribute('aria-label',label);button.title=label;}
+  if(button){for(const glyph of icon.children)glyph.setAttribute('opacity',glyph.dataset.mode===mode?'1':'0');caption.textContent=mode==='system'?'系统':titles[mode];button.dataset.themeLabel=titles[mode];button.dataset.themeMode=mode;const label=`颜色模式：${titles[mode]}${mode==='system'?'（'+titles[theme]+'）':''}；点击切换为${titles[next]}`;button.setAttribute('aria-label',label);button.title=label;}
  }});
  if(button){button.addEventListener('click',controller.cycle);mounted.set(button,controller);}return controller;
 }

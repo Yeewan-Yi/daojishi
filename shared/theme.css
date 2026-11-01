@@ -3,4 +3,3 @@
 html[data-theme-mode=dark] .theme-glyph-dark,html[data-theme-mode=light] .theme-glyph-light,html[data-theme-mode=system] .theme-glyph-system{opacity:1;transform:rotate(0) scale(1)}
 @media(prefers-reduced-motion:reduce){.theme-mode-icon .theme-glyph{transition:none}}
 
-.header .nav-tool[data-theme-mode]:is(:hover,:focus-visible) .nav-caption{width:calc(4em + 4px)}
