@@ -1,4 +1,4 @@
-import {mountGuide} from './shared/guide.js?v=20261102';
+import {mountGuide} from './shared/guide.js?v=20261102-easy';
 import {mountPostcard,postcardShortcut} from './shared/postcard-frame.js?v=20261030-interactions';
 import {drawPencil} from './shared/pencil-art.js';
 import {captureLabels} from './shared/photo-metadata.js';
@@ -13,7 +13,7 @@ import {createAlbumLoader,dismissAlbumLoader,updateAlbumLoader} from './album-lo
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261029-postcard';
 import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion,lockModal} from './motion.js?v=20261030-interactions';
-import {mountReleaseNotes} from './release-notes.js?v=20261102-guides';
+import {mountReleaseNotes} from './release-notes.js?v=20261102-easy';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 const backTop=$('memory-back-top');
 function updateBackTop(){const visible=window.scrollY>24;backTop.classList.toggle('is-visible',visible);backTop.inert=!visible;backTop.setAttribute('aria-hidden',String(!visible));if(!visible&&document.activeElement===backTop)$('home-brand').focus({preventScroll:true});}
