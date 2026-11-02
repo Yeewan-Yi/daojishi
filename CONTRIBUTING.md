@@ -55,6 +55,12 @@ Windows PowerShell 如果提示「无法加载 npm.ps1，因为禁止运行脚�
 
 流程参考 GitHub 官方：[Fork 与 Pull Request](https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project)、[GitHub Desktop 克隆与 Fork](https://docs.github.com/en/desktop/adding-and-cloning-repositories/cloning-and-forking-repositories-from-github-desktop)。
 
+## 随页面维护使用指引
+
+模板的顶部已经接入「指引」，内容放在自己目录的 `guide.js`。沿用示例的 `title`、`intro`、`chapters`，随功能更新入口、操作步骤、结果和按钮用途即可。完整格式与可选示意图见 `docs/subsite-design.md`。请写清本机演示和共享功能的区别，不放私人截图、照片或分享链接。
+
+这是让彼此了解页面的协作约定，PR 中说明指引是否一起更新即可；不新增阻断提交的自动检查。
+
 ## 页内共议与输入标记
 
 共议在当前页面右侧展开，不再单开子页面。`initSubsite()` / `mountSuggestionLink()` 的接入方式保持兼容，新页面自动获得侧栏。关闭后保留建议和回复草稿；原共议网址会回到对应页面并展开侧栏。

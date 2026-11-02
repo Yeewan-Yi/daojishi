@@ -17,6 +17,7 @@ test('生成器创建完整独立页面并登记，拒绝覆盖、越界路径�
   const html=await readFile(join(root,'pages/our-story/index.html'),'utf8');
   assert.match(html,/<h1>同行<\/h1>/);assert.match(html,/\.\.\/\.\.\/shared\/subsite.css/);
   const js=await readFile(join(root,'pages/our-story/page.js'),'utf8');assert.match(js,/youqi.page.our-story.draft/);
+  const guide=await readFile(join(root,'pages/our-story/guide.js'),'utf8');assert.match(guide,/同行/);assert.doesNotMatch(guide,/__PAGE_TITLE__/);assert.match(js,/import \{guide\} from '.\/guide.js'/);
   assert.deepEqual(JSON.parse(await readFile(join(root,'pages/registry.json'),'utf8')),[{slug:'our-story',title:'同行'}]);
   assert.notEqual(run('our-story','改名').status,0);assert.equal(await readFile(join(root,'pages/our-story/index.html'),'utf8'),html);
   for(const args of [['../escape','新篇'],['Uppercase','新篇'],['safe','<script>'],['safe',"a'b"],['safe','a\\b']])assert.notEqual(run(...args).status,0);

@@ -69,3 +69,13 @@ Fork 是代码协作方式，不自动共享身份。如果要把子网站放在
 本机预览：`index.html?mode=local&council=1`。模板开发仍用本机演示，不需额外数据库或凭证。
 
 手机顶部工具由公共模块自动收拢：保留常用入口与「更多」按钮，其余以图标加名称原位展开。复用原按钮保留事件和权限，宽屏恢复原顺序；新子页面无需重复实现。
+
+## 使用指引的接入
+
+`initSubsite({name, guide})` 会把「指引」放入顶部导航并兼容手机的「更多」。模板已接入，内容写在本页的 `guide.js`，无需复制主站代码。不传 `guide` 时显示模板通用指引；正式功能请替换为对应说明。
+
+指引对象包含 `title`、`intro` 与 `chapters` 数组。每节包含唯一英文 `id`、`title`、`summary`、`art`、`steps`；可选 `buttons`。步骤为 `{title, body, target?, hint?}`，按钮为 `{label, description, target?}`。`target` 是页面内 CSS 选择器，「定位」只标出入口，不会点击、提交或写入数据；尚未展开的入口用 `hint` 提示前置操作。所有文案按纯文本处理。
+
+内置示意图：`flight`、`map`、`album`、`postcard`、`navigation`、`calendar`、`letters`、`council`、`sharing`、`upload`、`work`。按实际任务分节，说明从哪里开始、如何操作、会发生什么，并列出按钮用途；补充手机、键盘、权限与本机/共享差异。新增功能时一起维护即可，这一约定不作为阻断提交的强制检查。
+
+交互参考：[Slack 快速入门](https://slack.com/help/articles/360059928654-How-to-use-Slack--your-quick-start-guide)、[Notion 界面指引](https://www.notion.com/en-gb/help/navigate-with-the-sidebar)、[Linear 入门](https://linear.app/docs/start-guide)。沿用按任务组织、界面示意与入口解释的方式，不自动打断用户。

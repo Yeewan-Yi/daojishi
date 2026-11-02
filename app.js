@@ -1,8 +1,9 @@
+import {mountGuide} from './shared/guide.js?v=20261102';
 import {mountThemeMode} from './shared/theme.js?v=20261101-compact-theme';
 import {mountMobileTools} from './shared/mobile-tools.js?v=20261026-theme-hover';
 import {brandMark} from './symbols.js?v=20261023-covers';
 import {mountSuggestionLink} from './suggestions-link.js?v=20261030-interactions';
-import {mountReleaseNotes} from './release-notes.js?v=20261030-interactions';
+import {mountReleaseNotes} from './release-notes.js?v=20261102-guides';
 import {journeyLink} from './journey-data.js?v=20261029-postcard';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
@@ -20,6 +21,7 @@ mountThemeMode($('theme-button'),{colors:{light:'#f5f6f2',dark:'#0b1210'}});
 const datePicker=mountDatePicker();
 bindModalMotion();
 mountReleaseNotes();
+mountGuide({host:document.querySelector('.header-actions'),page:'main'});
 mountSuggestionLink({host:document.querySelector('.header-actions'),site:'main'});
 mountMobileTools({host:document.querySelector('.header-actions'),primary:'#edit-button'});
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '本地时区';
@@ -430,7 +432,7 @@ function installScrollScene() {
     if (performance.now() - previousPaint > 100) previousPaint = performance.now() - 16;
     frame = requestAnimationFrame(paint);
   }
-  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select,.letters-dock,.memory-atlas,.atlas-trigger,[data-council-panel]');
+  const canZoom = target => !document.body.classList.contains('focus-mode') && !document.querySelector('dialog[open]') && !target.closest?.('input,textarea,select,.page-guide,.letters-dock,.memory-atlas,.atlas-trigger,[data-council-panel]');
   function advanceView(delta, scrollScale = 1) {
     if(document.body.classList.contains('atlas-open')&&zoomTarget>=.999){
       delta=globe3d?.zoomDetail(delta)??delta;
@@ -444,7 +446,7 @@ function installScrollScene() {
   }
   addEventListener('wheel', event => {
     if(event.defaultPrevented||event.ctrlKey)return;
-    const panel=event.target.closest?.('.memory-atlas,.letters-dock,dialog[open],.version-panel');if(panel){event.preventDefault();const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?panel.clientHeight:1);let scroller=event.target;while(scroller&&scroller!==panel&&!(scroller.scrollHeight>scroller.clientHeight+1&&['auto','scroll'].includes(getComputedStyle(scroller).overflowY)))scroller=scroller.parentElement;(scroller||panel).scrollTop+=delta;return;}
+    const panel=event.target.closest?.('.page-guide,.memory-atlas,.letters-dock,dialog[open],.version-panel');if(panel){event.preventDefault();const delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?panel.clientHeight:1);let scroller=event.target;while(scroller&&scroller!==panel&&!(scroller.scrollHeight>scroller.clientHeight+1&&['auto','scroll'].includes(getComputedStyle(scroller).overflowY)))scroller=scroller.parentElement;(scroller||panel).scrollTop+=delta;return;}
     if (event.ctrlKey || !canZoom(event.target) || scrollY > 1) return;
     if (event.deltaY < 0 || zoomTarget > 0 || zoomReset && zoom > 0) {
       event.preventDefault();
