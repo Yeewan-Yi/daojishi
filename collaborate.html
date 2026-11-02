@@ -4,7 +4,7 @@
 <section class="rule-section"><h2>开始只需要这几步</h2><ol class="steps"><li>登录自己的 GitHub，点上方「复制开发仓库」，创建自己的 Fork。无需提供密码，也不需要主仓库写权限。</li><li>用 GitHub Desktop 把自己的 Fork 克隆到电脑，并创建分支，例如 <code>codex/our-story</code>。用 VS Code 或自己习惯的 AI 编辑器打开文件夹。</li><li>安装 Node.js 24 LTS，在项目终端执行下面三条命令。把「新篇」改成你准备开发的页面名字。</li></ol><pre>npm ci
 npm run new:page -- our-story "新篇"
 npm start</pre><p>浏览器打开 <code>http://127.0.0.1:4173/pages/our-story/?mode=local</code>。主要修改 <code>pages/our-story/</code> 中的文件即可。</p><ol class="steps" start="4"><li>完成后运行 <code>npm test</code>，在 GitHub Desktop 提交并推送自己的分支，点 Create Pull Request，目标选择 <code>Yeewan-Yi/daojishi → main</code>。</li><li>对方审核合并后自动上线。新页面会出现在本页下方的目录中，再安排正式导航入口。</li></ol></section>
-<section class="rule-section"><h2>把使用方法也留给对方</h2><p>模板已接入顶部「指引」。开发新功能时，一起修改自己目录中的 <code>guide.js</code>：在 tour 中按第一次进入的顺序介绍网页和入口，每段一两句话，不先让用户选择功能，给要介绍的真实入口填写选择器，导览会直接突出它的位置。手机、键盘与本机演示的差异也请说明。</p><p>这是共同维护的约定，提交时说明指引是否同步更新即可，不新增阻断提交的强制检查。可先打开本页顶部「指引」查看接入说明。</p></section><section class="rule-section"><h2>交给 AI 编辑器的开工说明</h2><p>把以下文字直接复制给你的 AI，再补充你想做的功能：</p><pre>请先阅读根目录 AGENTS.md、CONTRIBUTING.md 和 docs/subsite-design.md。
+<section class="rule-section"><h2>把使用方法也留给对方</h2><p>模板已接入顶部「指引」。开发新功能时，一起修改自己目录中的 <code>guide.js</code>：在 tour 中按使用顺序讲清入口及内部的小操作，每步只讲一件事，不先让用户选择功能，给要介绍的真实入口填写选择器，导览会直接突出它的位置。手机、键盘与本机演示的差异也请说明。</p><p>这是共同维护的约定，提交时说明指引是否同步更新即可，不新增阻断提交的强制检查。可先打开本页顶部「指引」查看接入说明。</p></section><section class="rule-section"><h2>交给 AI 编辑器的开工说明</h2><p>把以下文字直接复制给你的 AI，再补充你想做的功能：</p><pre>请先阅读根目录 AGENTS.md、CONTRIBUTING.md 和 docs/subsite-design.md。
 我负责一个独立子网站，请先帮我创建 pages/our-story/，标题为「新篇」。
 复用 shared/subsite.css、shared/subsite.js 和现有字体图标，沿袭有期/拾光风格。
 同步维护页面 guide.js 的 tour，按初次观看顺序带人认识页面与按钮，不设计功能选择菜单。
