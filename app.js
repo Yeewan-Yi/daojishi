@@ -1,9 +1,9 @@
-import {mountGuide} from './shared/guide.js?v=20261102-easy';
+import {mountGuide} from './shared/guide.js?v=20261102-tour';
 import {mountThemeMode} from './shared/theme.js?v=20261101-compact-theme';
 import {mountMobileTools} from './shared/mobile-tools.js?v=20261026-theme-hover';
 import {brandMark} from './symbols.js?v=20261023-covers';
 import {mountSuggestionLink} from './suggestions-link.js?v=20261030-interactions';
-import {mountReleaseNotes} from './release-notes.js?v=20261102-easy';
+import {mountReleaseNotes} from './release-notes.js?v=20261102-tour';
 import {journeyLink} from './journey-data.js?v=20261029-postcard';
 import { STORAGE_KEY, validateCountdown, defaultCountdown, getCountdown, countdownDelay, encodeShare, decodeShare, toLocalInput } from './countdown.js?v=20261021-glyphs';
 import { CloudClient, ROOM_STORAGE_KEY, newRoom, roomFromHash, roomUrl, validateRoom } from './cloud.js';
