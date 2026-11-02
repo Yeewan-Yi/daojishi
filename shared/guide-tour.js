@@ -1,3 +1,4 @@
+import {detailedTour} from './guide-details.js';
 const s=(title,body,target)=>({title,body,target});
 const common=[
  s('有想法，就告诉对方','这里是“共议”。对网页有修改建议，可以在这里写下来，再一起回复、标记进展。','[data-suggestions-link]'),
@@ -31,6 +32,6 @@ const tours={
 };
 export function tourFor(page,content,custom=false){
  if(Array.isArray(content.tour)&&content.tour.length)return content.tour;
- if(!custom&&tours[page])return tours[page];
+ if(!custom&&tours[page])return detailedTour(tours[page]);
  return content.chapters.map(row=>s(row.title,row.summary,row.steps.find(step=>step.target)?.target));
 }

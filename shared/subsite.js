@@ -1,4 +1,4 @@
-import {mountGuide} from './guide.js?v=20261102-tour';
+import {mountGuide} from './guide.js?v=20261102-details';
 import {mountThemeMode} from './theme.js?v=20261101-compact-theme';
 import {mountMobileTools} from './mobile-tools.js?v=20261026-theme-hover';
 import {brandMark} from '../symbols.js';
