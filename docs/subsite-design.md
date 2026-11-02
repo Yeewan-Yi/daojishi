@@ -74,8 +74,10 @@ Fork 是代码协作方式，不自动共享身份。如果要把子网站放在
 
 `initSubsite({name, guide})` 会把「指引」放入顶部导航并兼容手机的「更多」。模板已接入，内容写在本页的 `guide.js`，无需复制主站代码。不传 `guide` 时显示模板通用指引；正式功能请替换为对应说明。
 
-指引对象包含 `title`、`intro` 与 `chapters` 数组。每节包含唯一英文 `id`、`title`、`summary`、`art`、`steps`；可选 `buttons`。步骤为 `{title, body, target?, hint?}`，按钮为 `{label, description, target?}`。`target` 是页面内 CSS 选择器，引导每次只展示一步，自动标出入口；「去试试」将焦点交给真实控件，不会点击、提交或写入数据；尚未展开的入口用 `hint` 提示前置操作。所有文案按纯文本处理。
+指引使用一条连贯的导览，首次访问轻量邀请“带我看看”，也能跳过；顶部指引可随时重看。观看顺序由开发者安排，不显示功能选择菜单、章节目录或搜索。网页本身就是示意图，讲到哪里就突出哪里，不需要复制私人照片制作教程。
 
-内置示意图：`flight`、`map`、`album`、`postcard`、`navigation`、`calendar`、`letters`、`council`、`sharing`、`upload`、`work`。使用“放进照片”“给对方写封信”等直白名称，平铺可做的事；每步只写一个动作，用一两句短话说明点哪里、怎么做。详细按钮用途折叠备用，不再堆章节、搜索与目录；补充手机、键盘、权限与本机/共享差异。新增功能时一起维护即可，这一约定不作为阻断提交的强制检查。
+在自己页面的 `guide.js` 填写 `tour: [{title, body, target?}, ...]`。先解释这一页是什么，再介绍主要内容、常用入口和完成操作的位置；每段一两句口语说明。`target` 是真实入口的 CSS 选择器，导览只滚动、突出位置，不代点编辑、保存或上传。手机会临时展开“更多”展示对应工具，结束后恢复。关闭和跳过会保留“已看过”状态，避免反复打扰。
 
-交互参考：[Slack 快速入门](https://slack.com/help/articles/360059928654-How-to-use-Slack--your-quick-start-guide)、[Notion 界面指引](https://www.notion.com/en-gb/help/navigate-with-the-sidebar)、[Linear 入门](https://linear.app/docs/start-guide)。沿用按任务组织、界面示意与入口解释的方式，不自动打断用户。
+旧的 `chapters` 数据保持兼容；未提供 `tour` 时按原顺序介绍功能摘要，已有子页面无需立刻重写。协作上请随功能维护导览，这不作为阻断提交的强制检查。
+
+交互参考：[Slack 快速入门](https://slack.com/help/articles/360059928654-How-to-use-Slack--your-quick-start-guide)、[Notion 界面指引](https://www.notion.com/en-gb/help/navigate-with-the-sidebar)、[Linear 入门](https://linear.app/docs/start-guide)。沿用界面位置提示与循序介绍；初次邀请不强制开始，随时可以跳过。
