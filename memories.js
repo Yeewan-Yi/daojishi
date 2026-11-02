@@ -1,3 +1,4 @@
+import {mountGuide} from './shared/guide.js?v=20261102';
 import {mountPostcard,postcardShortcut} from './shared/postcard-frame.js?v=20261030-interactions';
 import {drawPencil} from './shared/pencil-art.js';
 import {captureLabels} from './shared/photo-metadata.js';
@@ -12,7 +13,7 @@ import {createAlbumLoader,dismissAlbumLoader,updateAlbumLoader} from './album-lo
 import {JourneyClient,journeyContext,journeyLink,prepareMemory} from './journey-data.js?v=20261029-postcard';
 import {brandMark,trailMark} from './symbols.js?v=20261023-covers';
 import {openModal,closeModal,bindModalMotion,lockModal} from './motion.js?v=20261030-interactions';
-import {mountReleaseNotes} from './release-notes.js?v=20261030-interactions';
+import {mountReleaseNotes} from './release-notes.js?v=20261102-guides';
 const $=id=>document.getElementById(id),ctx=journeyContext(),client=new JourneyClient(ctx);
 const backTop=$('memory-back-top');
 function updateBackTop(){const visible=window.scrollY>24;backTop.classList.toggle('is-visible',visible);backTop.inert=!visible;backTop.setAttribute('aria-hidden',String(!visible));if(!visible&&document.activeElement===backTop)$('home-brand').focus({preventScroll:true});}
@@ -22,6 +23,7 @@ const atmosphere=document.querySelector('.memory-atmosphere');
 function pauseAtmosphere(){atmosphere?.classList.toggle('is-paused',document.hidden);}
 document.addEventListener('visibilitychange',pauseAtmosphere);pauseAtmosphere();
 mountReleaseNotes();
+mountGuide({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),page:'memories'});
 mountSuggestionLink({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),site:'memories'});
 mountMobileTools({host:document.querySelector('.memory-header nav[aria-label="页面工具"]'),primary:'#home-link'});
 $('brand-emblem').innerHTML=brandMark;$('trail-emblem').innerHTML=trailMark;

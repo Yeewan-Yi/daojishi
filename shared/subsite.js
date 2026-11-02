@@ -1,3 +1,4 @@
+import {mountGuide} from './guide.js?v=20261102';
 import {mountThemeMode} from './theme.js?v=20261101-compact-theme';
 import {mountMobileTools} from './mobile-tools.js?v=20261026-theme-hover';
 import {brandMark} from '../symbols.js';
@@ -11,11 +12,12 @@ export function siteLink(path='index.html'){
  url.hash=location.hash;
  return url.href;
 }
-export function initSubsite({name='新篇',active='',site,suggestions=true}={}){
+export function initSubsite({name='新篇',active='',site,suggestions=true,guide}={}){
  mountThemeMode(document.querySelector('[data-theme-toggle]'));
  const brand=document.querySelector('[data-site-brand]');if(brand){brand.href=siteLink();brand.innerHTML=brandMark+'<span>有期</span><small></small>';brand.querySelector('small').textContent=name;}
  document.querySelectorAll('[data-site-link]').forEach(a=>{a.href=siteLink(a.dataset.siteLink);if(a.dataset.siteLink===active)a.setAttribute('aria-current','page');});
  if(suggestions&&!location.pathname.endsWith('/suggestions.html'))mountSuggestionLink({host:document.querySelector('.site-nav'),site,siteTitle:name,shared:true});
+ mountGuide({host:document.querySelector('.site-nav'),guide,page:location.pathname.endsWith('/collaborate.html')?'collaborate':'starter'});
  mountMobileTools({host:document.querySelector('.site-nav'),primary:'[data-theme-toggle]'});
  return {siteLink};
 }

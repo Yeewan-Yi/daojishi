@@ -5,6 +5,7 @@
 ## 预览与验证
 
 - 本地路径：
+- 使用指引是否随功能更新（说明即可）：
 - 桌面 / 手机、深浅主题截图：
 - [ ] `node scripts/check-subsites.mjs`
 - [ ] `npm test`
