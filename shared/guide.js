@@ -36,11 +36,11 @@ export function mountGuide({host,guide,page='main',dark=false,auto=true}={}){
   if(r.left<p.right&&r.right>p.left&&r.top<p.bottom&&r.bottom>p.top)panel.classList.add(matchMedia('(max-width:680px)').matches?'guide-at-top':'guide-on-left');
  }
  function point(reveal=false){
-  clearHighlight();status.textContent='';if(!open||mode!=='walk')return;
+  clearHighlight();if(!open||mode!=='walk')return;
   const step=steps[position];let target=findTarget(step.target)||findTarget(step.fallback);
   // Only expose an existing navigation menu. Never open an editor, submit or change data.
   if(!target&&matchMedia('(max-width:680px)').matches){const toggle=document.querySelector('.mobile-tools-toggle');let hiddenTarget;try{hiddenTarget=step.target&&document.querySelector(step.target);}catch{}if(toggle&&hiddenTarget?.closest('.mobile-tools-panel')&&toggle.getAttribute('aria-expanded')!=='true'){ownedMenu=toggle;toggle.click();target=findTarget(step.target);}}
-  if(!target){if(document.querySelector('dialog[open]'))status.textContent='先关掉正在使用的窗口，就能接着看其他入口。';return;}
+  if(!target){if(document.querySelector('dialog[open]')&&!status.textContent)status.textContent='先关掉正在使用的窗口，就能接着看其他入口。';return;}
   highlight=target;target.classList.add('guide-located');if(reveal)target.scrollIntoView({block:'nearest',inline:'nearest',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});positionSpot();
  }
  function setOpen(value,focus=true){
